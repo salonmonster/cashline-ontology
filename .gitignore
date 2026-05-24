@@ -43,3 +43,7 @@
 # Local Claude Code / compound-engineering artifacts (review JSON, scheduled task locks).
 /.claude/
 /.context/
+
+# Ignore key files for decrypting credentials and more.
+/config/credentials/*.key
+
