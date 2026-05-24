@@ -68,7 +68,6 @@ class ExtractionRun < ApplicationRecord
 
   def broadcast_panel_update
     return unless user_id
-    return unless defined?(ActionCable) # Turbo Streams require ActionCable; test env may not load it
     broadcast_replace_to(
       [self, user],
       target: ActionView::RecordIdentifier.dom_id(self, :panel),
