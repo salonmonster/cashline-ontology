@@ -47,8 +47,19 @@ class ExtractionRun < ApplicationRecord
   end
 
   def record_partial_failure!(object_api_name:, reason:)
-    self.partial_failures = partial_failures + [{ "object_api_name" => object_api_name, "reason" => reason }]
-    save!
+    # Atomic append at the SQL layer. ProfileObjectJob is fan-out with
+    # total_limit: 4, so up to four jobs can call this simultaneously.
+    # A Ruby read-modify-write (`partial_failures + [entry]; save!`)
+    # loses entries when concurrent jobs race: each reads the same
+    # baseline, appends one entry, and overwrites the other's writes.
+    # `jsonb || ?` is server-side and concurrency-safe.
+    entry = { "object_api_name" => object_api_name, "reason" => reason }
+    self.class.where(id: id).update_all([
+      "partial_failures = partial_failures || ?::jsonb, updated_at = ?",
+      [entry].to_json, Time.current
+    ])
+    # Keep the in-memory record in sync for callers that read it after.
+    reload
   end
 
   private

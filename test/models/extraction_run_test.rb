@@ -54,6 +54,22 @@ class ExtractionRunTest < ActiveSupport::TestCase
     assert_equal 1, run.partial_failures.size
   end
 
+  test "record_partial_failure! is concurrency-safe: parallel writers do not lose entries" do
+    run = ExtractionRun.create!(api_version: "62.0", seed_objects: %w[Account])
+    # Two stale in-memory copies, each holding an empty partial_failures array.
+    # A read-modify-write would overwrite the other's append; a server-side
+    # `jsonb || ?` must end with both entries persisted.
+    copy_one = ExtractionRun.find(run.id)
+    copy_two = ExtractionRun.find(run.id)
+
+    copy_one.record_partial_failure!(object_api_name: "A", reason: "first")
+    copy_two.record_partial_failure!(object_api_name: "B", reason: "second")
+
+    run.reload
+    api_names = run.partial_failures.map { |f| f["object_api_name"] }.sort
+    assert_equal %w[A B], api_names
+  end
+
   test "mark_failed! captures error message" do
     run = ExtractionRun.create!(api_version: "62.0", seed_objects: %w[Account])
     run.mark_failed!("token exchange failed")

@@ -39,3 +39,7 @@
 
 # Run extraction storage (canonical JSON snapshots; never commit)
 /storage/runs/
+
+# Local Claude Code / compound-engineering artifacts (review JSON, scheduled task locks).
+/.claude/
+/.context/

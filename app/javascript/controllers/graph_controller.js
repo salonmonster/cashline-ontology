@@ -1,5 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
+// Module-level guard: cytoscape.use(fcose) mutates a global singleton. Only
+// register the plugin once across the page's lifetime; subsequent Stimulus
+// connects (Turbo cache replay, re-navigation) must not call .use() again.
+let fcoseRegistered = false
+
 // Renders a Cytoscape force-directed graph from a JSON endpoint.
 // Lazily imports cytoscape + cytoscape-fcose; no-ops if the modules
 // aren't pinned in the importmap.
@@ -8,18 +13,30 @@ export default class extends Controller {
   static targets = ["canvas", "namespaceFilter", "minRecords"]
 
   async connect() {
+    this.alive = true
+    this.abortController = new AbortController()
     try {
       const cytoscape = (await import("cytoscape")).default
+      if (!this.alive) return
       try {
         const fcose = (await import("cytoscape-fcose")).default
-        cytoscape.use(fcose)
+        if (!fcoseRegistered) {
+          cytoscape.use(fcose)
+          fcoseRegistered = true
+        }
         this.layoutName = "fcose"
       } catch (_e) {
         this.layoutName = "cose"
       }
 
-      const resp = await fetch(this.endpointValue, { headers: { Accept: "application/json" } })
+      const resp = await fetch(this.endpointValue, {
+        headers: { Accept: "application/json" },
+        signal: this.abortController.signal
+      })
+      if (!this.alive) return
       const data = await resp.json()
+      if (!this.alive) return
+
       this.data = data
       this.cy = cytoscape({
         container: this.canvasTarget,
@@ -44,7 +61,24 @@ export default class extends Controller {
         }
       }
     } catch (e) {
+      if (e.name === "AbortError") return
       console.warn("Cytoscape not available", e)
+    }
+  }
+
+  // Critical: tear everything down on Turbo navigation. Without this the
+  // Cytoscape instance keeps a reference to a detached DOM node, the fetch
+  // resolves after disconnect and writes into nothing, and the tap handler
+  // accumulates on every visit.
+  disconnect() {
+    this.alive = false
+    if (this.abortController) {
+      this.abortController.abort()
+      this.abortController = null
+    }
+    if (this.cy) {
+      try { this.cy.destroy() } catch (_e) { /* already torn down */ }
+      this.cy = null
     }
   }
 
