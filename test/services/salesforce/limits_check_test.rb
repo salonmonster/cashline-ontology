@@ -4,11 +4,18 @@ require "ostruct"
 module Salesforce
   class LimitsCheckTest < ActiveSupport::TestCase
     # A minimal stand-in for the Restforce client surface LimitsCheck uses.
-    # Holds whatever body we want the next .get("limits") to return.
+    # Holds whatever body we want the next .get(...) to return.
+    #
+    # IMPORTANT: the path must be the full versioned data-API path. Restforce 8's
+    # client.get does NOT auto-prefix /services/data/vXX/ — calling client.get("limits")
+    # hits the bare /limits which Salesforce returns as a "URL No Longer Exists"
+    # HTML page. This stub enforces the correct path so a regression won't slip
+    # past the test suite again.
     class StubClient
+      EXPECTED_PATH = "/services/data/v#{Salesforce::API_VERSION}/limits".freeze
       attr_writer :limits_body
       def get(path)
-        raise "unexpected path #{path}" unless path == "limits"
+        raise "unexpected path #{path}; expected #{EXPECTED_PATH}" unless path == EXPECTED_PATH
         OpenStruct.new(body: @limits_body)
       end
     end

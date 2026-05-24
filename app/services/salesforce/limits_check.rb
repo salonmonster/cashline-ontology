@@ -19,7 +19,11 @@ module Salesforce
     # @param client [Restforce::Data::Client] usually `Salesforce::ClientFactory.rest`
     # @return [Hash{String => Hash{String => Integer}}] limit name -> {"Max" => , "Remaining" => }
     def call(client)
-      raw = client.get("limits").body
+      # Restforce 8's `client.get(path)` does not auto-prefix the versioned
+      # data-API path (unlike `client.query` etc.), so the full path is
+      # required here. Hitting "limits" directly returns Salesforce's generic
+      # "URL No Longer Exists" HTML page.
+      raw = client.get("/services/data/v#{Salesforce::API_VERSION}/limits").body
       raw
         .slice(*INTERESTING_LIMITS)
         .transform_values { |v| v.to_h.slice("Max", "Remaining") }
