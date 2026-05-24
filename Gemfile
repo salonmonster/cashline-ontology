@@ -25,7 +25,7 @@ gem "bcrypt", "~> 3.1.7"
 # Salesforce REST + Tooling client (verified 8.0.1 exposes Restforce.tooling factory)
 gem "restforce", "~> 8.0"
 # JWT Bearer flow signing
-gem "jwt", "~> 2.9"
+gem "jwt", "~> 3.2"
 # Direct HTTP client for Bulk API 2.0 (Restforce only covers Bulk 1.0)
 gem "faraday", "~> 2"
 # Bulk 2.0 returns query results as CSV; csv leaves the stdlib in Ruby 3.4.
