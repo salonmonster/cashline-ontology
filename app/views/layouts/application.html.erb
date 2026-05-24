@@ -8,6 +8,15 @@
     <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <%# Turbo Drive prefetches every link on hover by default. For this app
+        that means hovering near the nav fires concurrent GETs against /objects,
+        /erds, /graph, /reports — each one a SQL-heavy query. During a live
+        extraction with ProfileObjectJobs filling the connection pool, this
+        saturates Postgres's connection pool and surfaces as "Failed to fetch"
+        TypeError in the browser console plus apparent page hangs. Opt in
+        per-link instead via data-turbo-prefetch="true" when prefetch is
+        actually useful. %>
+    <meta name="turbo-prefetch" content="false">
 
     <%= yield :head %>
 
