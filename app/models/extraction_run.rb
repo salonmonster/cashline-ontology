@@ -5,6 +5,7 @@ class ExtractionRun < ApplicationRecord
   belongs_to :user, optional: true
   has_many :sobjects, dependent: :destroy
   has_many :srelationships, dependent: :destroy
+  has_many :clusters, dependent: :destroy
 
   validates :status, inclusion: { in: STATUSES }
   validates :api_version, presence: true
@@ -12,6 +13,8 @@ class ExtractionRun < ApplicationRecord
 
   before_validation :assign_directory_token, on: :create
   before_validation :assign_default_retained_until, on: :create
+
+  after_update_commit :broadcast_panel_update
 
   scope :sensitive, -> { where(include_sensitive: true) }
   scope :purgeable, -> { sensitive.where("retained_until IS NOT NULL AND retained_until < ?", Time.current) }
@@ -44,6 +47,19 @@ class ExtractionRun < ApplicationRecord
   end
 
   private
+
+  def broadcast_panel_update
+    return unless user_id
+    return unless defined?(ActionCable) # Turbo Streams require ActionCable; test env may not load it
+    broadcast_replace_to(
+      [self, user],
+      target: ActionView::RecordIdentifier.dom_id(self, :panel),
+      partial: "runs/panel",
+      locals: { run: self }
+    )
+  rescue StandardError => e
+    Rails.logger.warn("[ExtractionRun] broadcast failed: #{e.class}: #{e.message}")
+  end
 
   def assign_directory_token
     return if directory_token.present?

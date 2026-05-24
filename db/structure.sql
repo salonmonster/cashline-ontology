@@ -26,6 +26,72 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: cluster_assignments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.cluster_assignments (
+    id bigint NOT NULL,
+    cluster_id bigint NOT NULL,
+    sobject_id bigint NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: cluster_assignments_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.cluster_assignments_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: cluster_assignments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.cluster_assignments_id_seq OWNED BY public.cluster_assignments.id;
+
+
+--
+-- Name: clusters; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.clusters (
+    id bigint NOT NULL,
+    extraction_run_id bigint NOT NULL,
+    name character varying NOT NULL,
+    color character varying,
+    user_modified boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: clusters_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.clusters_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: clusters_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.clusters_id_seq OWNED BY public.clusters.id;
+
+
+--
 -- Name: extraction_runs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -500,6 +566,20 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
+-- Name: cluster_assignments id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cluster_assignments ALTER COLUMN id SET DEFAULT nextval('public.cluster_assignments_id_seq'::regclass);
+
+
+--
+-- Name: clusters id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clusters ALTER COLUMN id SET DEFAULT nextval('public.clusters_id_seq'::regclass);
+
+
+--
 -- Name: extraction_runs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -568,6 +648,22 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 
 ALTER TABLE ONLY public.ar_internal_metadata
     ADD CONSTRAINT ar_internal_metadata_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: cluster_assignments cluster_assignments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cluster_assignments
+    ADD CONSTRAINT cluster_assignments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: clusters clusters_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clusters
+    ADD CONSTRAINT clusters_pkey PRIMARY KEY (id);
 
 
 --
@@ -695,6 +791,48 @@ ALTER TABLE ONLY public.users
 --
 
 CREATE INDEX idx_srels_run_src_tgt ON public.srelationships USING btree (extraction_run_id, source_sobject_id, target_sobject_id);
+
+
+--
+-- Name: index_cluster_assignments_on_cluster_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_cluster_assignments_on_cluster_id ON public.cluster_assignments USING btree (cluster_id);
+
+
+--
+-- Name: index_cluster_assignments_on_cluster_id_and_sobject_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_cluster_assignments_on_cluster_id_and_sobject_id ON public.cluster_assignments USING btree (cluster_id, sobject_id);
+
+
+--
+-- Name: index_cluster_assignments_on_sobject_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_cluster_assignments_on_sobject_id ON public.cluster_assignments USING btree (sobject_id);
+
+
+--
+-- Name: index_cluster_assignments_on_sobject_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_cluster_assignments_on_sobject_unique ON public.cluster_assignments USING btree (sobject_id);
+
+
+--
+-- Name: index_clusters_on_extraction_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_clusters_on_extraction_run_id ON public.clusters USING btree (extraction_run_id);
+
+
+--
+-- Name: index_clusters_on_extraction_run_id_and_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_clusters_on_extraction_run_id_and_name ON public.clusters USING btree (extraction_run_id, name);
 
 
 --
@@ -1138,6 +1276,14 @@ ALTER TABLE ONLY public.srelationships
 
 
 --
+-- Name: cluster_assignments fk_rails_687f411867; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cluster_assignments
+    ADD CONSTRAINT fk_rails_687f411867 FOREIGN KEY (cluster_id) REFERENCES public.clusters(id);
+
+
+--
 -- Name: srelationships fk_rails_6c908176dd; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1186,11 +1332,27 @@ ALTER TABLE ONLY public.srelationships
 
 
 --
+-- Name: cluster_assignments fk_rails_bdb7c6adbe; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.cluster_assignments
+    ADD CONSTRAINT fk_rails_bdb7c6adbe FOREIGN KEY (sobject_id) REFERENCES public.sobjects(id);
+
+
+--
 -- Name: spicklist_values fk_rails_e8555a132d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.spicklist_values
     ADD CONSTRAINT fk_rails_e8555a132d FOREIGN KEY (sfield_id) REFERENCES public.sfields(id);
+
+
+--
+-- Name: clusters fk_rails_ff97e2ea26; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clusters
+    ADD CONSTRAINT fk_rails_ff97e2ea26 FOREIGN KEY (extraction_run_id) REFERENCES public.extraction_runs(id);
 
 
 --
@@ -1200,6 +1362,7 @@ ALTER TABLE ONLY public.spicklist_values
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260524020000'),
 ('20260524014600'),
 ('20260524014500'),
 ('20260524014400'),

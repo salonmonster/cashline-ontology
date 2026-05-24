@@ -1,0 +1,37 @@
+<% content_for(:title, "Edit clusters") %>
+<nav class="text-sm text-slate-600 mb-3"><%= link_to "ERDs", erds_path(run: @run&.id), class: "underline" %> / Edit clusters</nav>
+
+<% if @run.nil? %>
+  <p class="text-slate-700">No active run.</p>
+<% else %>
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-semibold">Edit clusters</h1>
+    <% if @clusters.any? %>
+      <%= button_to "Reset to auto-cluster", reset_cluster_path(@clusters.first.id, run: @run.id), method: :post, data: { confirm: "Reset all clusters? Manual assignments will be lost." }, class: "rounded bg-rose-100 text-rose-900 px-3 py-2 text-sm" %>
+    <% end %>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <% @clusters.each do |c| %>
+      <div class="rounded border border-slate-200 bg-white p-4">
+        <%= form_with url: rename_cluster_path(c.id, run: @run.id), method: :patch, local: true, class: "mb-2 flex items-center gap-2" do %>
+          <%= text_field_tag "cluster[name]", c.name, class: "rounded border-slate-300 text-sm flex-1" %>
+          <%= submit_tag "Rename", class: "rounded bg-slate-200 px-2 py-1 text-xs" %>
+        <% end %>
+        <p class="text-xs text-slate-500"><%= pluralize(c.sobjects.size, "object") %></p>
+        <ul class="mt-2 space-y-1 max-h-64 overflow-y-auto text-sm">
+          <% c.sobjects.order(:api_name).each do |so| %>
+            <li class="flex items-center justify-between gap-2 border-b border-slate-100 py-1">
+              <span class="font-mono text-xs"><%= so.api_name %></span>
+              <%= form_with url: assign_cluster_path(c.id, run: @run.id), method: :patch, local: true, class: "flex items-center gap-1" do %>
+                <%= hidden_field_tag :sobject_id, so.id %>
+                <%= select_tag :cluster_id, options_from_collection_for_select(@clusters, :id, :name, c.id), class: "text-xs rounded border-slate-300" %>
+                <%= submit_tag "Move", class: "rounded bg-slate-200 px-2 py-0.5 text-xs" %>
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+  </div>
+<% end %>

@@ -1,0 +1,49 @@
+<% content_for(:title, "New run") %>
+<nav class="text-sm text-slate-600 mb-3"><%= link_to "Runs", runs_path, class: "underline" %> / New</nav>
+<h1 class="text-2xl font-semibold mb-4">Trigger a new extraction</h1>
+
+<%= form_with model: @run, url: runs_path, local: true, class: "rounded border border-slate-200 bg-white p-6 max-w-2xl space-y-5" do |f| %>
+  <% if @run.errors.any? %>
+    <div class="rounded bg-rose-50 text-rose-900 px-3 py-2 text-sm">
+      <%= @run.errors.full_messages.to_sentence %>
+    </div>
+  <% end %>
+
+  <div>
+    <%= f.label :preset, "Seed-object preset", class: "block text-sm font-medium text-slate-700" %>
+    <%= f.select :preset,
+                 options_for_select([
+                   ["AR default (Account, Contact, Opportunity)", "ar_default"],
+                   ["AR full (Account, Contact, Opportunity, Task, Event, User, RecordType)", "ar_full"]
+                 ], "ar_default"),
+                 {}, class: "mt-1 block w-full rounded border-slate-300" %>
+    <p class="mt-1 text-xs text-slate-500">Or supply a custom seed list below.</p>
+  </div>
+
+  <div>
+    <%= f.label :seed_objects, "Custom seed objects (comma-separated, leave empty to use preset)", class: "block text-sm font-medium text-slate-700" %>
+    <%= text_field_tag "extraction_run[seed_objects][]", "", class: "mt-1 block w-full rounded border-slate-300", placeholder: "Invoice__c, Brand__c" %>
+  </div>
+
+  <div>
+    <%= f.label :api_version, class: "block text-sm font-medium text-slate-700" %>
+    <%= f.text_field :api_version, class: "mt-1 block w-full rounded border-slate-300" %>
+  </div>
+
+  <% if policy(ExtractionRun).trigger_with_pii? %>
+    <div class="rounded border border-amber-300 bg-amber-50 p-4">
+      <label class="flex items-start gap-3">
+        <%= f.check_box :include_sensitive, class: "mt-1" %>
+        <span>
+          <span class="block text-sm font-medium text-amber-900">Include sensitive (PII / financial) values</span>
+          <span class="block text-xs text-amber-800">Run will be flagged sensitive, stored under <code>storage/runs/sensitive/</code> with mode 0700, and auto-purged after 30 days. An audit event is written either way.</span>
+        </span>
+      </label>
+    </div>
+  <% end %>
+
+  <div class="flex items-center gap-3">
+    <%= f.submit "Queue extraction", class: "rounded bg-slate-900 text-white px-4 py-2 text-sm" %>
+    <%= link_to "Cancel", runs_path, class: "text-sm text-slate-600 underline" %>
+  </div>
+<% end %>

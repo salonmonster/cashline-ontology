@@ -2,15 +2,37 @@ Rails.application.routes.draw do
   resource :session
   resources :passwords, param: :token
 
-  # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
+  resources :runs, only: [:index, :show, :new, :create] do
+    member { post :select }
+  end
+
+  resources :objects, only: [:index, :show], param: :api_name, constraints: { api_name: %r{[^/.]+} }
+
+  resources :erds, only: [:index, :show], param: :slug, constraints: { slug: %r{[^/.]+} }
+  resources :clusters, only: [] do
+    collection { get :edit }
+    member do
+      patch :rename
+      patch :assign
+      post :reset
+    end
+  end
+
+  resource :graph, only: [:show], controller: "graph" do
+    get :data, on: :collection
+  end
+
+  namespace :reports do
+    get :hub_orphan
+    get :unused_fields
+  end
+
   get "up" => "rails/health#show", as: :rails_health_check
 
-  # Mission Control Jobs dashboard — gated to admins by AdminConstraint (defined in lib/admin_constraint.rb)
   authenticated_admin = ->(request) { AdminConstraint.matches?(request) }
   constraints(authenticated_admin) do
     mount MissionControl::Jobs::Engine, at: "/jobs"
   end
 
-  # Placeholder root — Phase E will replace this with a dashboard / runs index.
-  root to: "rails/health#show"
+  root to: "runs#index"
 end

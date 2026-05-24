@@ -7,6 +7,8 @@ class Sobject < ApplicationRecord
                                     foreign_key: :source_sobject_id, dependent: :destroy
   has_many :incoming_relationships, class_name: "Srelationship",
                                     foreign_key: :target_sobject_id, dependent: :nullify
+  has_one :cluster_assignment, dependent: :destroy
+  has_one :cluster, through: :cluster_assignment
 
   validates :api_name, presence: true
 end

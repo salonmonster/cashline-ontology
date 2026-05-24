@@ -23,8 +23,11 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body>
-    <main class="container mx-auto mt-28 px-5 flex">
+  <body class="bg-slate-50 text-slate-900">
+    <%= render "shared/nav" %>
+    <% if flash[:notice] %><div class="max-w-7xl mx-auto px-4 sm:px-6 mb-4 rounded bg-emerald-50 text-emerald-900 px-3 py-2 text-sm"><%= flash[:notice] %></div><% end %>
+    <% if flash[:alert] %><div class="max-w-7xl mx-auto px-4 sm:px-6 mb-4 rounded bg-rose-50 text-rose-900 px-3 py-2 text-sm"><%= flash[:alert] %></div><% end %>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 pb-12">
       <%= yield %>
     </main>
   </body>
