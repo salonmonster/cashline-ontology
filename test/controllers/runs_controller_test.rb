@@ -73,6 +73,30 @@ class RunsControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil run.retained_until
   end
 
+  test "sailfin_scope preset bundles seed list and widens walk_options" do
+    sign_in(@analyst)
+    post runs_path, params: { extraction_run: { preset: "sailfin_scope", api_version: "62.0" } }
+    run = ExtractionRun.order(:id).last
+    assert_includes run.seed_objects, "Account"
+    assert_includes run.seed_objects, "Brand__c"
+    assert_includes run.seed_objects, "Reporting_Client__c"
+    # Walk options should be present and include the sfsrm namespace.
+    assert run.walk_options.is_a?(Hash)
+    assert_includes Array(run.walk_options["namespace_allowlist"]), "sfsrm"
+    assert_includes Array(run.walk_options["namespace_allowlist"]), "sfcapp"
+    assert_equal 4, run.walk_options["max_hops"]
+  end
+
+  test "ar_default preset leaves walk_options untouched (job defaults apply)" do
+    sign_in(@analyst)
+    post runs_path, params: { extraction_run: { preset: "ar_default", api_version: "62.0" } }
+    run = ExtractionRun.order(:id).last
+    assert_equal %w[Account Contact Opportunity], run.seed_objects
+    # No preset walk_options for ar_default — column ends up empty/nil-equivalent.
+    assert run.walk_options.blank? || run.walk_options == {},
+           "expected ar_default to leave walk_options empty; got #{run.walk_options.inspect}"
+  end
+
   test "read_only user cannot view a sensitive run's details" do
     run = ExtractionRun.create!(api_version: "62.0", include_sensitive: true, user: @analyst_pii, seed_objects: %w[Account])
     sign_in(@reader)

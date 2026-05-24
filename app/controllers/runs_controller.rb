@@ -4,7 +4,22 @@ class RunsController < ApplicationController
 
   PRESET_SEED_OBJECTS = {
     "ar_default" => %w[Account Contact Opportunity],
-    "ar_full" => %w[Account Contact Opportunity Task Event User RecordType]
+    "ar_full" => %w[Account Contact Opportunity Task Event User RecordType],
+    "sailfin_scope" => %w[
+      Account Contact Opportunity
+      Brand__c Business_Entity__c Open_Invoices__c Reporting_Client__c
+      DSO_Report__c Weekly_AR_Snapshot__c Account_Brand_Association__c
+    ]
+  }.freeze
+
+  # Presets that also override walk_options. Without a preset entry here, the
+  # job defaults apply (namespace_allowlist = [nil, ""], max_hops = 3).
+  PRESET_WALK_OPTIONS = {
+    "sailfin_scope" => {
+      "namespace_allowlist" => [nil, "", "sfsrm", "sfcapp"],
+      "standard_allowlist"  => %w[Account Contact User RecordType Opportunity Task Event Pricebook2 Profile],
+      "max_hops"            => 4
+    }
   }.freeze
 
   def index
@@ -72,6 +87,12 @@ class RunsController < ApplicationController
     permitted = params.require(:extraction_run).permit(:include_sensitive, :api_version, :preset, seed_objects: [], walk_options: {})
     if (preset = permitted.delete(:preset)).present? && PRESET_SEED_OBJECTS.key?(preset)
       permitted[:seed_objects] = PRESET_SEED_OBJECTS[preset]
+      # If the preset declares walk_options, use them. Otherwise fall back to
+      # the job's DEFAULT_WALK_OPTIONS, which keeps the walk inside the
+      # standard namespace.
+      if (preset_walk = PRESET_WALK_OPTIONS[preset])
+        permitted[:walk_options] = preset_walk
+      end
     end
     permitted[:seed_objects] = Array(permitted[:seed_objects]).reject(&:blank?)
     permitted

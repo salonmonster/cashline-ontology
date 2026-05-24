@@ -1,6 +1,29 @@
 <% content_for(:title, "New run") %>
 <nav class="text-sm text-slate-600 mb-3"><%= link_to "Runs", runs_path, class: "underline" %> / New</nav>
-<h1 class="text-2xl font-semibold mb-4">Trigger a new extraction</h1>
+<h1 class="text-2xl font-semibold mb-2">Trigger a new extraction</h1>
+
+<div class="max-w-2xl mb-5 text-sm text-slate-700 space-y-2">
+  <p>
+    Starts a Salesforce describe walk from your seed objects, then loads the
+    schema into the local DB and profiles each visited object (record count,
+    null rate per field, distinct counts, top values).
+  </p>
+  <p>
+    Results appear under
+    <%= link_to "Objects", objects_path, class: "underline text-blue-700" %>,
+    <%= link_to "ERDs", erds_path, class: "underline text-blue-700" %>,
+    <%= link_to "Graph", graph_path, class: "underline text-blue-700" %>, and
+    <%= link_to "Reports", reports_hub_orphan_path, class: "underline text-blue-700" %>
+    once the run completes. The run detail page updates live — you can
+    navigate away and return.
+  </p>
+  <p class="text-xs text-slate-600">
+    <strong>Typical timing:</strong> 1–3 min for AR default (~20 objects),
+    10–30 min for Sailfin scope (100+ objects, ~30k Salesforce API calls).
+    Quota usage shows up in
+    <code class="bg-slate-100 px-1 rounded">bin/rails sailfin:limits</code>.
+  </p>
+</div>
 
 <%= form_with model: @run, url: runs_path, local: true, class: "rounded border border-slate-200 bg-white p-6 max-w-2xl space-y-5" do |f| %>
   <% if @run.errors.any? %>
@@ -13,21 +36,33 @@
     <%= f.label :preset, "Seed-object preset", class: "block text-sm font-medium text-slate-700" %>
     <%= f.select :preset,
                  options_for_select([
-                   ["AR default (Account, Contact, Opportunity)", "ar_default"],
-                   ["AR full (Account, Contact, Opportunity, Task, Event, User, RecordType)", "ar_full"]
+                   ["AR default (Account, Contact, Opportunity — standard only)", "ar_default"],
+                   ["AR full (Account, Contact, Opportunity, Task, Event, User, RecordType)", "ar_full"],
+                   ["Sailfin scope (AR + cashline custom objects + walk into sfsrm/sfcapp)", "sailfin_scope"]
                  ], "ar_default"),
                  {}, class: "mt-1 block w-full rounded border-slate-300" %>
-    <p class="mt-1 text-xs text-slate-500">Or supply a custom seed list below.</p>
+    <p class="mt-1 text-xs text-slate-500">Or supply a custom seed list below. The Sailfin scope preset also widens the walk's namespace allowlist to include managed-package objects (max_hops 4).</p>
   </div>
 
   <div>
     <%= f.label :seed_objects, "Custom seed objects (comma-separated, leave empty to use preset)", class: "block text-sm font-medium text-slate-700" %>
     <%= text_field_tag "extraction_run[seed_objects][]", "", class: "mt-1 block w-full rounded border-slate-300", placeholder: "Invoice__c, Brand__c" %>
+    <p class="mt-1 text-xs text-slate-500">
+      Starting points for the BFS walk. The walker follows reference fields
+      outward until <code>max_hops</code> is reached or the next hop falls
+      outside the namespace allowlist. Use exact Salesforce API names
+      (case-sensitive, with <code>__c</code> suffix for custom objects).
+    </p>
   </div>
 
   <div>
     <%= f.label :api_version, class: "block text-sm font-medium text-slate-700" %>
     <%= f.text_field :api_version, class: "mt-1 block w-full rounded border-slate-300" %>
+    <p class="mt-1 text-xs text-slate-500">
+      Leave at the default unless you need a specific Salesforce API version.
+      Bumping it across runs makes diffs noisy (every renamed/added field
+      surfaces); pin deliberately.
+    </p>
   </div>
 
   <% if policy(ExtractionRun).trigger_with_pii? %>
