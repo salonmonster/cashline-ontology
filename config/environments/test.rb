@@ -20,7 +20,9 @@ Rails.application.configure do
 
   # Show full error reports.
   config.consider_all_requests_local = true
-  config.cache_store = :null_store
+  # Use a real in-memory cache so Salesforce::TokenCache tests can verify
+  # caching, invalidation, and TTL behaviors. (Rails 8 default is :null_store.)
+  config.cache_store = :memory_store
 
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable
