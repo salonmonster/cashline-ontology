@@ -145,5 +145,26 @@ module Ontology
       assert_equal [{ "object" => "Account", "field" => "Name", "from" => 80, "to" => 255 }],
                    diff["field_length_changed"]
     end
+
+    test "polymorphic relationship diff does not crash on nil target" do
+      a_task = Sobject.create!(extraction_run: @run_a, api_name: "Task", raw_describe: {})
+      a_acct = Sobject.create!(extraction_run: @run_a, api_name: "Account", raw_describe: {})
+      Srelationship.create!(extraction_run: @run_a, source_sobject: a_task, target_sobject: a_acct,
+                            relationship_name: "What", polymorphic: false, reference_to_api_names: ["Account"])
+
+      b_task = Sobject.create!(extraction_run: @run_b, api_name: "Task", raw_describe: {})
+      Sobject.create!(extraction_run: @run_b, api_name: "Account", raw_describe: {})
+      # Polymorphic ref with no concrete target_sobject — target_sobject_id NULL
+      # is the production shape of multi-reference fields like Task.WhatId.
+      Srelationship.create!(extraction_run: @run_b, source_sobject: b_task, target_sobject: nil,
+                            relationship_name: "WhatId", polymorphic: true,
+                            reference_to_api_names: %w[Account Opportunity Contract])
+
+      assert_nothing_raised do
+        diff = DiffCalculator.compute(@run_a, @run_b)
+        assert diff["relationship_added"].is_a?(Array)
+        assert diff["relationship_removed"].is_a?(Array)
+      end
+    end
   end
 end

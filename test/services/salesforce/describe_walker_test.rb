@@ -152,5 +152,42 @@ module Salesforce
       walker.walk
       assert_equal 1, stub.calls.count("C")
     end
+
+    class FlakyClient
+      def initialize(payloads, failures)
+        @payloads = payloads
+        @failures = failures
+      end
+      def describe(api_name)
+        raise @failures[api_name] if @failures.key?(api_name)
+        @payloads[api_name] or raise "no stub describe for #{api_name}"
+      end
+    end
+
+    test "single inaccessible object becomes a partial failure and walk continues" do
+      payloads = {
+        "A" => describe_payload(name: "A", fields: [reference_field(name: "BId", references_to: "B")]),
+        "C" => describe_payload(name: "C", fields: [])
+      }
+      failures = { "B" => StandardError.new("FLS denied") }
+      walker = DescribeWalker.new(
+        client: FlakyClient.new(payloads, failures),
+        seed_objects: %w[A C],
+        namespace_allowlist: [nil],
+        standard_allowlist: %w[A B C],
+        max_hops: 2
+      )
+
+      result = walker.walk
+
+      # A and C visited; B failed and was not added to describes
+      assert_includes result.visited, "A"
+      assert_includes result.visited, "C"
+      refute_includes result.visited, "B"
+
+      assert_equal 1, result.partial_failures.size
+      assert_equal "B", result.partial_failures.first[:object_api_name]
+      assert_match(/FLS denied/, result.partial_failures.first[:reason])
+    end
   end
 end

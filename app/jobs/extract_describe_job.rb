@@ -35,6 +35,13 @@ class ExtractDescribeJob < ApplicationJob
     result = walker.walk
     rd = Runs::RunDirectory.for(run)
 
+    # Per-object describe failures the walker caught — surface them so the
+    # run lands as `complete_with_warnings` rather than silently dropping them.
+    Array(result.partial_failures).each do |pf|
+      run.record_partial_failure!(object_api_name: pf[:object_api_name] || pf["object_api_name"],
+                                  reason: pf[:reason] || pf["reason"])
+    end
+
     result.describes.each do |api_name, payload|
       path = rd.object_jsonl_path(api_name)
       rd.append_jsonl!(path, { record_type: "describe", api_name: api_name, payload: payload })

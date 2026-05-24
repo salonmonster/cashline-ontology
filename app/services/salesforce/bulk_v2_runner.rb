@@ -22,6 +22,8 @@ module Salesforce
   class BulkV2Runner
     POLL_INTERVAL = 5 # seconds; tests stub this to 0
     POLL_TIMEOUT = 30 * 60 # 30 minutes hard cap
+    OPEN_TIMEOUT = 10  # seconds to establish TCP connection
+    REQUEST_TIMEOUT = 60 # seconds for a single Faraday call to return
     MAX_AUTH_RETRIES = 1
     # Concurrency cap for any GoodJob job that wraps this runner. Caller
     # should set: good_job_control_concurrency_with(total_limit: CONCURRENCY_LIMIT,
@@ -111,6 +113,11 @@ module Salesforce
     def connection(token)
       Faraday.new(url: token.instance_url) do |f|
         f.headers["Authorization"] = "Bearer #{token.access_token}"
+        # Hard bound on a single Faraday call so a hung Salesforce response
+        # cannot pin a GoodJob worker thread + DB connection indefinitely.
+        # POLL_TIMEOUT only fires between polls; this fires within them.
+        f.options.open_timeout = OPEN_TIMEOUT
+        f.options.timeout = REQUEST_TIMEOUT
         f.adapter Faraday.default_adapter
       end
     end
@@ -129,6 +136,12 @@ module Salesforce
         response
       rescue RetryError
         retry
+      rescue Faraday::Error, SocketError, SystemCallError => e
+        # Surface transport-layer failures as Salesforce::Error so callers
+        # (job-level rescue) can handle them like any other SF failure
+        # rather than letting them propagate to GoodJob as an unrelated
+        # job error that triggers full retry from the top.
+        raise Salesforce::Error, "Bulk 2.0 transport failure: #{e.class}: #{e.message}"
       end
     end
 

@@ -33,12 +33,26 @@ module Salesforce
     #   expired. Caller may pass `force: true` to skip the cache (used after
     #   401 retry).
     def ensure_token(force: false)
+      validate_credentials!
       invalidate_token! if force
 
       TokenCache.fetch(
         consumer_key: credentials.fetch(:consumer_key),
         sandbox: sandbox?
       ) { perform_jwt_exchange }
+    end
+
+    # Surfaces a clear configuration error before the first JWT exchange.
+    # Without this, a missing credentials file raises a bare KeyError that
+    # bubbles up through job-level rescues with an opaque message.
+    def validate_credentials!
+      required = %i[consumer_key username instance_url private_key]
+      missing = required.reject { |key| credentials[key].to_s.strip.present? }
+      return if missing.empty?
+      raise Salesforce::AuthenticationError,
+            "Salesforce credentials not configured (missing #{missing.join(', ')}). " \
+            "Run `bin/rails credentials:edit -e #{Rails.env}` and add the `salesforce:` block " \
+            "as documented in docs/runbook/salesforce-connected-app.md."
     end
 
     private

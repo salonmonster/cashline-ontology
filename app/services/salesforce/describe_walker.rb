@@ -12,7 +12,7 @@ module Salesforce
   # the off-scope target is not. Self-references and diamond merges do not
   # cause extra describes — each object is described at most once.
   class DescribeWalker
-    Result = Struct.new(:visited, :edges, :describes, keyword_init: true)
+    Result = Struct.new(:visited, :edges, :describes, :partial_failures, keyword_init: true)
 
     def initialize(client:, seed_objects:, namespace_allowlist:, standard_allowlist:, max_hops:)
       @client = client
@@ -26,6 +26,7 @@ module Salesforce
       visited = {}
       edges = []
       describes = {}
+      partial_failures = []
 
       queue = @seed_objects.map { |name| [name, 0] }
 
@@ -33,7 +34,17 @@ module Salesforce
         api_name, depth = queue.shift
         next if visited.key?(api_name)
 
-        payload = @client.describe(api_name)
+        # Per-object rescue: a single inaccessible managed-package object
+        # (FLS denied, deleted between listing and describe, transient 5xx)
+        # must not abort the entire walk. The caller records each failure
+        # as a partial failure on the run and continues.
+        payload = begin
+          @client.describe(api_name)
+        rescue StandardError => e
+          partial_failures << { object_api_name: api_name, reason: "describe failed: #{e.class}: #{e.message}" }
+          next
+        end
+
         describes[api_name] = payload
         visited[api_name] = true
 
@@ -57,7 +68,7 @@ module Salesforce
       # would leak dead edges. This also makes diff between runs cleaner.
       kept_edges = edges.select { |e| visited.key?(e[:target]) }
 
-      Result.new(visited: visited.keys, edges: kept_edges, describes: describes)
+      Result.new(visited: visited.keys, edges: kept_edges, describes: describes, partial_failures: partial_failures)
     end
 
     private

@@ -78,8 +78,11 @@ module Ontology
       a_rel_set = a_rels.to_set
       b_rel_set = b_rels.to_set
 
-      relationship_added = (b_rel_set - a_rel_set).to_a.sort
-      relationship_removed = (a_rel_set - b_rel_set).to_a.sort
+      # Sort by stringified element so polymorphic relationships (target_sobject
+      # nil) don't break Array#<=>. Without this, any org with Task.WhatId /
+      # Event.WhoId that changed between runs crashes the diff with ArgumentError.
+      relationship_added = (b_rel_set - a_rel_set).to_a.sort_by { |arr| arr.map(&:to_s) }
+      relationship_removed = (a_rel_set - b_rel_set).to_a.sort_by { |arr| arr.map(&:to_s) }
 
       {
         "run_a_id" => @a.id,

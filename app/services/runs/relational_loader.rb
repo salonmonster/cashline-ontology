@@ -19,9 +19,9 @@ module Runs
     end
 
     def load!
-      clear_existing_rows!
-
       ApplicationRecord.transaction do
+        clear_existing_rows!
+
         loaded_objects = {}
 
         each_object_jsonl do |api_name, records|
@@ -46,12 +46,20 @@ module Runs
     private
 
     def clear_existing_rows!
-      # FK cascade handles sfields and spicklist_values via dependent: :destroy
-      # at the AR layer, but we use delete_all here for speed since we re-run
-      # the whole run in one transaction.
+      # delete_all bypasses AR callbacks, so we manually enumerate every FK
+      # dependent in FK-safe order. If you add a new table that references
+      # any of these, add it to the chain here. Profiles + cluster assignments
+      # were missed in the original implementation; the loader is the only
+      # path that legitimately deletes a run's rows en masse, so a missing
+      # entry here = PG::ForeignKeyViolation on re-load after profiling.
       sobject_ids = Sobject.where(extraction_run_id: @run.id).pluck(:id)
       sfield_ids = Sfield.where(sobject_id: sobject_ids).pluck(:id)
+      object_profile_ids = ObjectProfile.where(extraction_run_id: @run.id).pluck(:id)
 
+      FieldProfile.where(sfield_id: sfield_ids).delete_all
+      FieldProfile.where(object_profile_id: object_profile_ids).delete_all
+      ObjectProfile.where(id: object_profile_ids).delete_all
+      ClusterAssignment.where(sobject_id: sobject_ids).delete_all
       SpicklistValue.where(sfield_id: sfield_ids).delete_all
       Srelationship.where(extraction_run_id: @run.id).delete_all
       Sfield.where(id: sfield_ids).delete_all

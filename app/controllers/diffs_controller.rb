@@ -20,7 +20,12 @@ class DiffsController < ApplicationController
       return render_form_error("You do not have permission to view one of those runs.", :forbidden)
     end
 
-    record = ComputeDiffJob.new.perform(@run_a.id, @run_b.id)
+    # perform_now (not .new.perform) so ActiveJob still wraps the call:
+    # retry_on, discard_on, and the test adapter all see this invocation.
+    # Diff is synchronous by design — small payloads, fast computation,
+    # and the user expects an immediate result. If diffs grow too large
+    # to handle inline, switch to perform_later + a status page.
+    record = ComputeDiffJob.perform_now(@run_a.id, @run_b.id)
     redirect_to diff_path(record), notice: "Diff computed (#{record.total_changes} change#{'s' unless record.total_changes == 1})."
   end
 
