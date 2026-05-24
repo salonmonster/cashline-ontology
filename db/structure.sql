@@ -327,6 +327,40 @@ ALTER SEQUENCE public.object_profiles_id_seq OWNED BY public.object_profiles.id;
 
 
 --
+-- Name: run_diffs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.run_diffs (
+    id bigint NOT NULL,
+    run_a_id bigint NOT NULL,
+    run_b_id bigint NOT NULL,
+    computed_at timestamp(6) without time zone NOT NULL,
+    diff jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: run_diffs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.run_diffs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: run_diffs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.run_diffs_id_seq OWNED BY public.run_diffs.id;
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -601,6 +635,13 @@ ALTER TABLE ONLY public.object_profiles ALTER COLUMN id SET DEFAULT nextval('pub
 
 
 --
+-- Name: run_diffs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.run_diffs ALTER COLUMN id SET DEFAULT nextval('public.run_diffs_id_seq'::regclass);
+
+
+--
 -- Name: sessions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -728,6 +769,14 @@ ALTER TABLE ONLY public.good_jobs
 
 ALTER TABLE ONLY public.object_profiles
     ADD CONSTRAINT object_profiles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: run_diffs run_diffs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.run_diffs
+    ADD CONSTRAINT run_diffs_pkey PRIMARY KEY (id);
 
 
 --
@@ -1102,6 +1151,27 @@ CREATE INDEX index_object_profiles_on_sobject_id ON public.object_profiles USING
 
 
 --
+-- Name: index_run_diffs_on_run_a_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_run_diffs_on_run_a_id ON public.run_diffs USING btree (run_a_id);
+
+
+--
+-- Name: index_run_diffs_on_run_a_id_and_run_b_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_run_diffs_on_run_a_id_and_run_b_id ON public.run_diffs USING btree (run_a_id, run_b_id);
+
+
+--
+-- Name: index_run_diffs_on_run_b_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_run_diffs_on_run_b_id ON public.run_diffs USING btree (run_b_id);
+
+
+--
 -- Name: index_sessions_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1236,6 +1306,14 @@ ALTER TABLE ONLY public.field_profiles
 
 
 --
+-- Name: run_diffs fk_rails_0a68f3ac63; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.run_diffs
+    ADD CONSTRAINT fk_rails_0a68f3ac63 FOREIGN KEY (run_a_id) REFERENCES public.extraction_runs(id);
+
+
+--
 -- Name: sfields fk_rails_2e78504528; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1324,6 +1402,14 @@ ALTER TABLE ONLY public.extraction_runs
 
 
 --
+-- Name: run_diffs fk_rails_a42840fa71; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.run_diffs
+    ADD CONSTRAINT fk_rails_a42840fa71 FOREIGN KEY (run_b_id) REFERENCES public.extraction_runs(id);
+
+
+--
 -- Name: srelationships fk_rails_a9ad89c1b7; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1362,6 +1448,7 @@ ALTER TABLE ONLY public.clusters
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260524021000'),
 ('20260524020000'),
 ('20260524014600'),
 ('20260524014500'),
