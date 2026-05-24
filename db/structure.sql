@@ -26,6 +26,52 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: extraction_runs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.extraction_runs (
+    id bigint NOT NULL,
+    user_id bigint,
+    status character varying DEFAULT 'queued'::character varying NOT NULL,
+    api_version character varying NOT NULL,
+    started_at timestamp(6) without time zone,
+    completed_at timestamp(6) without time zone,
+    include_sensitive boolean DEFAULT false NOT NULL,
+    retained_until timestamp(6) without time zone,
+    seed_objects jsonb DEFAULT '[]'::jsonb NOT NULL,
+    walk_options jsonb DEFAULT '{}'::jsonb NOT NULL,
+    limits_at_start jsonb,
+    limits_at_end jsonb,
+    installed_packages jsonb,
+    partial_failures jsonb DEFAULT '[]'::jsonb NOT NULL,
+    error_message text,
+    content_hash text,
+    directory_token character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: extraction_runs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.extraction_runs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: extraction_runs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.extraction_runs_id_seq OWNED BY public.extraction_runs.id;
+
+
+--
 -- Name: good_job_batches; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -171,6 +217,167 @@ ALTER SEQUENCE public.sessions_id_seq OWNED BY public.sessions.id;
 
 
 --
+-- Name: sfields; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sfields (
+    id bigint NOT NULL,
+    sobject_id bigint NOT NULL,
+    api_name character varying NOT NULL,
+    label character varying,
+    data_type character varying,
+    length integer,
+    nillable boolean DEFAULT true NOT NULL,
+    calculated boolean DEFAULT false NOT NULL,
+    calculated_formula text,
+    encrypted boolean DEFAULT false NOT NULL,
+    name_field boolean DEFAULT false NOT NULL,
+    compound_field_name character varying,
+    picklist_count integer DEFAULT 0 NOT NULL,
+    references_count integer DEFAULT 0 NOT NULL,
+    namespace_prefix character varying,
+    accessible boolean DEFAULT true NOT NULL,
+    createable boolean DEFAULT true NOT NULL,
+    updateable boolean DEFAULT true NOT NULL,
+    filterable boolean DEFAULT true NOT NULL,
+    raw_describe jsonb DEFAULT '{}'::jsonb NOT NULL,
+    tooling_metadata jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: sfields_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.sfields_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: sfields_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.sfields_id_seq OWNED BY public.sfields.id;
+
+
+--
+-- Name: sobjects; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sobjects (
+    id bigint NOT NULL,
+    extraction_run_id bigint NOT NULL,
+    api_name character varying NOT NULL,
+    label character varying,
+    namespace_prefix character varying,
+    custom boolean DEFAULT false NOT NULL,
+    is_name_field boolean DEFAULT false NOT NULL,
+    raw_describe jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: sobjects_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.sobjects_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: sobjects_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.sobjects_id_seq OWNED BY public.sobjects.id;
+
+
+--
+-- Name: spicklist_values; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.spicklist_values (
+    id bigint NOT NULL,
+    sfield_id bigint NOT NULL,
+    value character varying NOT NULL,
+    label character varying,
+    active boolean DEFAULT true NOT NULL,
+    default_value boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: spicklist_values_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.spicklist_values_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: spicklist_values_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.spicklist_values_id_seq OWNED BY public.spicklist_values.id;
+
+
+--
+-- Name: srelationships; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.srelationships (
+    id bigint NOT NULL,
+    extraction_run_id bigint NOT NULL,
+    source_sobject_id bigint NOT NULL,
+    target_sobject_id bigint,
+    source_field_id bigint,
+    relationship_name character varying,
+    cascade_delete boolean DEFAULT false NOT NULL,
+    restricted_delete boolean DEFAULT false NOT NULL,
+    polymorphic boolean DEFAULT false NOT NULL,
+    reference_to_api_names jsonb DEFAULT '[]'::jsonb NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: srelationships_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.srelationships_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: srelationships_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.srelationships_id_seq OWNED BY public.srelationships.id;
+
+
+--
 -- Name: users; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -205,10 +412,45 @@ ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
 
 
 --
+-- Name: extraction_runs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.extraction_runs ALTER COLUMN id SET DEFAULT nextval('public.extraction_runs_id_seq'::regclass);
+
+
+--
 -- Name: sessions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sessions ALTER COLUMN id SET DEFAULT nextval('public.sessions_id_seq'::regclass);
+
+
+--
+-- Name: sfields id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sfields ALTER COLUMN id SET DEFAULT nextval('public.sfields_id_seq'::regclass);
+
+
+--
+-- Name: sobjects id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sobjects ALTER COLUMN id SET DEFAULT nextval('public.sobjects_id_seq'::regclass);
+
+
+--
+-- Name: spicklist_values id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.spicklist_values ALTER COLUMN id SET DEFAULT nextval('public.spicklist_values_id_seq'::regclass);
+
+
+--
+-- Name: srelationships id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.srelationships ALTER COLUMN id SET DEFAULT nextval('public.srelationships_id_seq'::regclass);
 
 
 --
@@ -224,6 +466,14 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 
 ALTER TABLE ONLY public.ar_internal_metadata
     ADD CONSTRAINT ar_internal_metadata_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: extraction_runs extraction_runs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.extraction_runs
+    ADD CONSTRAINT extraction_runs_pkey PRIMARY KEY (id);
 
 
 --
@@ -283,11 +533,85 @@ ALTER TABLE ONLY public.sessions
 
 
 --
+-- Name: sfields sfields_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sfields
+    ADD CONSTRAINT sfields_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sobjects sobjects_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sobjects
+    ADD CONSTRAINT sobjects_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: spicklist_values spicklist_values_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.spicklist_values
+    ADD CONSTRAINT spicklist_values_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: srelationships srelationships_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.srelationships
+    ADD CONSTRAINT srelationships_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_srels_run_src_tgt; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_srels_run_src_tgt ON public.srelationships USING btree (extraction_run_id, source_sobject_id, target_sobject_id);
+
+
+--
+-- Name: index_extraction_runs_on_directory_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_extraction_runs_on_directory_token ON public.extraction_runs USING btree (directory_token);
+
+
+--
+-- Name: index_extraction_runs_on_include_sensitive; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_extraction_runs_on_include_sensitive ON public.extraction_runs USING btree (include_sensitive);
+
+
+--
+-- Name: index_extraction_runs_on_started_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_extraction_runs_on_started_at ON public.extraction_runs USING btree (started_at);
+
+
+--
+-- Name: index_extraction_runs_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_extraction_runs_on_status ON public.extraction_runs USING btree (status);
+
+
+--
+-- Name: index_extraction_runs_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_extraction_runs_on_user_id ON public.extraction_runs USING btree (user_id);
 
 
 --
@@ -487,6 +811,104 @@ CREATE INDEX index_sessions_on_user_id ON public.sessions USING btree (user_id);
 
 
 --
+-- Name: index_sfields_on_api_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_sfields_on_api_name ON public.sfields USING btree (api_name);
+
+
+--
+-- Name: index_sfields_on_calculated; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_sfields_on_calculated ON public.sfields USING btree (calculated);
+
+
+--
+-- Name: index_sfields_on_sobject_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_sfields_on_sobject_id ON public.sfields USING btree (sobject_id);
+
+
+--
+-- Name: index_sfields_on_sobject_id_and_api_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_sfields_on_sobject_id_and_api_name ON public.sfields USING btree (sobject_id, api_name);
+
+
+--
+-- Name: index_sobjects_on_api_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_sobjects_on_api_name ON public.sobjects USING btree (api_name);
+
+
+--
+-- Name: index_sobjects_on_extraction_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_sobjects_on_extraction_run_id ON public.sobjects USING btree (extraction_run_id);
+
+
+--
+-- Name: index_sobjects_on_extraction_run_id_and_api_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_sobjects_on_extraction_run_id_and_api_name ON public.sobjects USING btree (extraction_run_id, api_name);
+
+
+--
+-- Name: index_spicklist_values_on_sfield_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_spicklist_values_on_sfield_id ON public.spicklist_values USING btree (sfield_id);
+
+
+--
+-- Name: index_spicklist_values_on_sfield_id_and_value; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_spicklist_values_on_sfield_id_and_value ON public.spicklist_values USING btree (sfield_id, value);
+
+
+--
+-- Name: index_srelationships_on_extraction_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_srelationships_on_extraction_run_id ON public.srelationships USING btree (extraction_run_id);
+
+
+--
+-- Name: index_srelationships_on_polymorphic; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_srelationships_on_polymorphic ON public.srelationships USING btree (polymorphic);
+
+
+--
+-- Name: index_srelationships_on_source_field_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_srelationships_on_source_field_id ON public.srelationships USING btree (source_field_id);
+
+
+--
+-- Name: index_srelationships_on_source_sobject_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_srelationships_on_source_sobject_id ON public.srelationships USING btree (source_sobject_id);
+
+
+--
+-- Name: index_srelationships_on_target_sobject_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_srelationships_on_target_sobject_id ON public.srelationships USING btree (target_sobject_id);
+
+
+--
 -- Name: index_users_on_email_address; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -501,11 +923,75 @@ CREATE INDEX index_users_on_role ON public.users USING btree (role);
 
 
 --
+-- Name: sfields fk_rails_2e78504528; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sfields
+    ADD CONSTRAINT fk_rails_2e78504528 FOREIGN KEY (sobject_id) REFERENCES public.sobjects(id);
+
+
+--
+-- Name: sobjects fk_rails_31b28ecd97; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sobjects
+    ADD CONSTRAINT fk_rails_31b28ecd97 FOREIGN KEY (extraction_run_id) REFERENCES public.extraction_runs(id);
+
+
+--
+-- Name: srelationships fk_rails_52d16ba36b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.srelationships
+    ADD CONSTRAINT fk_rails_52d16ba36b FOREIGN KEY (target_sobject_id) REFERENCES public.sobjects(id);
+
+
+--
+-- Name: srelationships fk_rails_6c908176dd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.srelationships
+    ADD CONSTRAINT fk_rails_6c908176dd FOREIGN KEY (source_field_id) REFERENCES public.sfields(id);
+
+
+--
 -- Name: sessions fk_rails_758836b4f0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sessions
     ADD CONSTRAINT fk_rails_758836b4f0 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: srelationships fk_rails_89c0ffb537; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.srelationships
+    ADD CONSTRAINT fk_rails_89c0ffb537 FOREIGN KEY (source_sobject_id) REFERENCES public.sobjects(id);
+
+
+--
+-- Name: extraction_runs fk_rails_a0981ca581; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.extraction_runs
+    ADD CONSTRAINT fk_rails_a0981ca581 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: srelationships fk_rails_a9ad89c1b7; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.srelationships
+    ADD CONSTRAINT fk_rails_a9ad89c1b7 FOREIGN KEY (extraction_run_id) REFERENCES public.extraction_runs(id);
+
+
+--
+-- Name: spicklist_values fk_rails_e8555a132d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.spicklist_values
+    ADD CONSTRAINT fk_rails_e8555a132d FOREIGN KEY (sfield_id) REFERENCES public.sfields(id);
 
 
 --
@@ -515,6 +1001,11 @@ ALTER TABLE ONLY public.sessions
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260524014300'),
+('20260524014200'),
+('20260524014100'),
+('20260524014000'),
+('20260524013900'),
 ('20260524000927'),
 ('20260524000926'),
 ('20260524000856');
