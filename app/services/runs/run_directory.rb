@@ -1,3 +1,4 @@
+require "digest"
 require "fileutils"
 require "json"
 
@@ -85,6 +86,26 @@ module Runs
     def purge!
       return unless root.exist?
       FileUtils.rm_rf(root)
+    end
+
+    # Deterministic digest of the run directory contents. Used by
+    # ExtractToolingJob to stamp the run with a content_hash at completion,
+    # and by ComputeDiffJob to detect on-disk/DB skew before diffing.
+    def content_digest
+      return nil unless root.exist?
+
+      entries = Dir.glob(root.join("*.jsonl")).sort.map do |path|
+        sha = Digest::SHA256.file(path).hexdigest
+        "#{File.basename(path)}:#{File.size(path)}:#{sha}"
+      end
+      manifest = manifest_path
+      if File.exist?(manifest)
+        sha = Digest::SHA256.file(manifest).hexdigest
+        entries << "_manifest.json:#{File.size(manifest)}:#{sha}"
+      end
+
+      return nil if entries.empty?
+      Digest::SHA256.hexdigest(entries.join("\n"))
     end
 
     private

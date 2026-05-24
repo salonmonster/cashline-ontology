@@ -65,4 +65,33 @@ class ExtractToolingJobTest < ActiveJob::TestCase
     assert_equal 2, @run.partial_failures.size
     assert_includes @run.partial_failures.map { |pf| pf["object_api_name"] }, "Account"
   end
+
+  test "finalizes the run: loads relational tables, fans out profile jobs, stamps content_hash, marks complete" do
+    fixed = FixedFetcher.new([{ "record_type" => "tooling_field_metadata", "field_developer_name" => "X" }])
+
+    job = ExtractToolingJob.new
+    job.define_singleton_method(:build_fetcher) { fixed }
+
+    assert_enqueued_jobs 2, only: ProfileObjectJob do
+      job.perform(@run.id)
+    end
+
+    @run.reload
+    assert_equal "complete", @run.status, "expected run to be marked complete after finalization"
+    assert_equal 2, @run.sobjects.count, "expected RelationalLoader to populate sobjects from JSONL"
+    assert @run.content_hash.present?, "expected content_hash to be stamped from the run directory"
+    assert_match(/\A[a-f0-9]{64}\z/, @run.content_hash, "expected content_hash to be a SHA256 hex digest")
+  end
+
+  test "marks complete_with_warnings when partial failures were recorded" do
+    raising = RaisingFetcher.new
+
+    job = ExtractToolingJob.new
+    job.define_singleton_method(:build_fetcher) { raising }
+    job.perform(@run.id)
+
+    @run.reload
+    assert_equal "complete_with_warnings", @run.status
+    assert @run.content_hash.present?
+  end
 end

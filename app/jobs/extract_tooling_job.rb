@@ -21,7 +21,20 @@ class ExtractToolingJob < ApplicationJob
         run.record_partial_failure!(object_api_name: api_name, reason: "tooling: #{e.message}")
       end
     end
-  rescue Salesforce::Error => e
+
+    # Pipeline finalization. The on-disk JSONL is the source of truth; load it
+    # into the relational tables, fan out per-object profiling jobs, stamp a
+    # content_hash from the directory contents, and mark the run complete.
+    # Profiling is fire-and-forget — ObjectProfile rows populate independently
+    # while the run is already marked complete.
+    Runs::RelationalLoader.load!(run)
+
+    run.sobjects.pluck(:id).each do |sobject_id|
+      ProfileObjectJob.perform_later(sobject_id)
+    end
+
+    run.mark_complete!(content_hash: rd.content_digest)
+  rescue Salesforce::Error, ActiveRecord::ActiveRecordError, IOError, SystemCallError => e
     run&.mark_failed!(e.message)
     raise
   end
