@@ -225,6 +225,28 @@ class ObjectsControllerTest < ActionDispatch::IntegrationTest
     refute_match("x@y.com", response.body, "PII top values must not leak via the field detail panel on a non-sensitive run")
   end
 
+  test "show renders type-filter chips when fields have >1 distinct data_type" do
+    sign_in(@analyst)
+    get object_path(@sobject.api_name, run: @run.id)
+    assert_response :success
+    # @sobject has @safe (string) and @pii (email) — 2 distinct types → chips render
+    assert_match(/data-controller="type-filter"/, response.body)
+    assert_match(/data-type-value="string"/, response.body)
+    assert_match(/data-type-value="email"/, response.body)
+    assert_match(/data-type-value="all"/, response.body)
+  end
+
+  test "show suppresses type-filter chips when there's only one data_type" do
+    one_type_sobject = Sobject.create!(extraction_run: @run, api_name: "OneType", raw_describe: {})
+    2.times { |i| Sfield.create!(sobject: one_type_sobject, api_name: "F#{i}", data_type: "string", sensitivity: "safe", raw_describe: {}) }
+
+    sign_in(@analyst)
+    get object_path(one_type_sobject.api_name, run: @run.id)
+    assert_response :success
+    # The type-filter controller wrapper still renders, but the chip row is omitted.
+    refute_match(/data-type-value="all"/, response.body)
+  end
+
   test "sensitive run + role reveals PII values" do
     sensitive_run = ExtractionRun.create!(api_version: "62.0", include_sensitive: true, user: @analyst_pii, seed_objects: %w[Account], status: "complete", completed_at: Time.current)
     so = Sobject.create!(extraction_run: sensitive_run, api_name: "Account", label: "Account", raw_describe: {})

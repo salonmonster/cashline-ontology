@@ -13,8 +13,32 @@
       compact         — bool, render in inline-expand mode (omits some chrome) %>
 
 <% compact = local_assigns.fetch(:compact, false) %>
+<% type_counts = sfields.group_by(&:data_type).transform_values(&:size).sort_by { |_t, c| -c } %>
+<% chip_active = "rounded bg-slate-900 text-white px-2 py-1 text-[11px] font-medium" %>
+<% chip_inactive = "rounded border border-slate-300 bg-white text-slate-700 hover:border-slate-500 px-2 py-1 text-[11px]" %>
 
-<div class="overflow-x-auto">
+<div data-controller="type-filter"
+     data-type-filter-active-class-value="<%= chip_active %>"
+     data-type-filter-inactive-class-value="<%= chip_inactive %>">
+  <% if type_counts.size > 1 %>
+    <div class="mb-2 flex items-center gap-1.5 flex-wrap">
+      <span class="text-[11px] uppercase tracking-wide text-slate-500 font-medium mr-1">Type:</span>
+      <button type="button"
+              data-type-filter-target="chip"
+              data-action="click->type-filter#filter"
+              data-type-value="all"
+              class="<%= chip_active %>">All (<%= sfields.size %>)</button>
+      <% type_counts.each do |t, c| %>
+        <button type="button"
+                data-type-filter-target="chip"
+                data-action="click->type-filter#filter"
+                data-type-value="<%= t %>"
+                class="<%= chip_inactive %>"><%= t %> (<%= c %>)</button>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div class="overflow-x-auto">
   <table class="min-w-full divide-y divide-slate-200 text-sm" data-controller="sortable-table">
     <thead class="bg-slate-100 text-left text-xs uppercase tracking-wide text-slate-600">
       <tr>
@@ -38,6 +62,7 @@
         <% field_frame_id = dom_id(f, :detail) %>
         <% col_count = hide_value_cols ? 7 : 9 %>
         <tr data-field-name="<%= f.api_name %>"
+            data-field-type="<%= f.data_type %>"
             data-controller="expandable"
             data-expandable-frame-id-value="<%= field_frame_id %>"
             data-expandable-frame-url-value="<%= field_object_path(sobject.api_name, field_name: f.api_name, run: run.id) %>">
@@ -88,7 +113,7 @@
           <% end %>
           <td class="px-3 py-2 text-slate-700"><%= f.references_count %></td>
         </tr>
-        <tr id="<%= field_frame_id %>-row" class="hidden" data-detail-for="<%= f.api_name %>">
+        <tr id="<%= field_frame_id %>-row" class="hidden" data-detail-for="<%= f.api_name %>" data-field-type="<%= f.data_type %>">
           <td colspan="<%= col_count %>" class="p-0 border-0">
             <%= turbo_frame_tag field_frame_id do %>
               <div class="bg-slate-50 px-4 py-2 text-xs text-slate-500">Loading field detail…</div>
@@ -98,4 +123,5 @@
       <% end %>
     </tbody>
   </table>
+  </div>
 </div>
