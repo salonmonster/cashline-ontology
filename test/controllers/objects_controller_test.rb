@@ -199,14 +199,49 @@ class ObjectsControllerTest < ActionDispatch::IntegrationTest
            "Standard object Account must be excluded when custom=1"
   end
 
-  test "field action returns the extended-detail panel as a Turbo Frame" do
+  test "field action returns just the frame for a Turbo Frame request" do
     sign_in(@analyst)
-    get field_object_path(@sobject.api_name, field_name: @safe.api_name, run: @run.id)
+    get field_object_path(@sobject.api_name, field_name: @safe.api_name, run: @run.id),
+        headers: { "Turbo-Frame" => "detail_sfield_#{@safe.id}" }
     assert_response :success
     assert_match(/turbo-frame[^>]+id="detail_sfield_#{@safe.id}"/, response.body)
     assert_match("Name", response.body)
-    # Layout-less response means no nav bar.
-    refute_match("Cashline", response.body[0..1500], "field action must render without the app layout")
+    # Frame request means no app layout (no nav, no <html>).
+    refute_match(/<html/, response.body, "Turbo Frame request must skip the app layout")
+  end
+
+  test "field action renders standalone page with breadcrumb on direct access" do
+    sign_in(@analyst)
+    get field_object_path(@sobject.api_name, field_name: @safe.api_name, run: @run.id)
+    assert_response :success
+    # Direct access → full page with app layout.
+    assert_match(/<html/, response.body)
+    # Breadcrumb shows the run + object path.
+    assert_match(@run.directory_token, response.body)
+    assert_match("Name", response.body)
+  end
+
+  test "field action exposes prev/next links to alphabetical neighbors" do
+    # Add a third field so we get both prev and next for the middle one.
+    middle = Sfield.create!(sobject: @sobject, api_name: "Middle", data_type: "string", sensitivity: "safe", raw_describe: {})
+    sign_in(@analyst)
+    get field_object_path(@sobject.api_name, field_name: middle.api_name, run: @run.id)
+    assert_response :success
+    # Alphabetical order on @sobject is: Email, Middle, Name. So prev=Email, next=Name.
+    assert_match(/← Email/, response.body)
+    assert_match(/Name →/, response.body)
+    # Prev/next links must escape any containing frame (data-turbo-frame="_top").
+    assert_match(/data-turbo-frame="_top"/, response.body)
+  end
+
+  test "field action disables prev link on first field, next link on last" do
+    sign_in(@analyst)
+    # @safe (Name) is alphabetically AFTER @pii (Email), so it's the last field.
+    get field_object_path(@sobject.api_name, field_name: @safe.api_name, run: @run.id)
+    assert_response :success
+    # Last field: prev exists (Email), next is disabled.
+    assert_match(/← Email/, response.body)
+    assert_match(/cursor-not-allowed[^>]*>next →/, response.body)
   end
 
   test "field 404s for an unknown field_name on a known object" do

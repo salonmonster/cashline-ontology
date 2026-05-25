@@ -1,13 +1,33 @@
 <% can_see_sensitive = can_view_sensitive_values?(@run, Current.user) %>
 <% hide_value_cols = (@run.include_sensitive && !Current.user&.sensitive_data_access?) %>
-<%= turbo_frame_tag dom_id(@sfield, :detail) do %>
+<%# Two rendering modes:
+    - Turbo Frame request: just the frame contents (inline expand from the
+      fields table). Frame ID matches the row's data-expandable-frame-id.
+    - Direct request: full-page sequential viewer with breadcrumb + prev/next.
+      The standalone path is what designers walking field-by-field will use. %>
+<% if turbo_frame_request? %>
+  <%= turbo_frame_tag dom_id(@sfield, :detail) do %>
+    <%= render "field_detail_panel",
+          sobject: @sobject, sfield: @sfield,
+          field_profile: @field_profile, object_profile: @object_profile,
+          outgoing_relationships: @outgoing_relationships, run: @run,
+          hide_value_cols: hide_value_cols, can_see_sensitive: can_see_sensitive,
+          prev_field: @prev_sfield, next_field: @next_sfield, inline: true %>
+  <% end %>
+<% else %>
+  <% content_for(:title, "#{@sobject.api_name} · #{@sfield.api_name}") %>
+  <nav class="text-sm text-slate-600 mb-3">
+    <%= link_to "Runs", runs_path, class: "underline" %> /
+    <%= link_to @run.directory_token, run_path(@run), class: "font-mono underline" %> /
+    <%= link_to "Objects", objects_path(run: @run.id), class: "underline" %> /
+    <%= link_to @sobject.api_name, object_path(@sobject.api_name, run: @run.id), class: "font-mono underline" %> /
+    <span class="font-mono"><%= @sfield.api_name %></span>
+  </nav>
+
   <%= render "field_detail_panel",
-        sobject: @sobject,
-        sfield: @sfield,
-        field_profile: @field_profile,
-        object_profile: @object_profile,
-        outgoing_relationships: @outgoing_relationships,
-        run: @run,
-        hide_value_cols: hide_value_cols,
-        can_see_sensitive: can_see_sensitive %>
+        sobject: @sobject, sfield: @sfield,
+        field_profile: @field_profile, object_profile: @object_profile,
+        outgoing_relationships: @outgoing_relationships, run: @run,
+        hide_value_cols: hide_value_cols, can_see_sensitive: can_see_sensitive,
+        prev_field: @prev_sfield, next_field: @next_sfield, inline: false %>
 <% end %>

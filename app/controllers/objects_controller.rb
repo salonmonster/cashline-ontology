@@ -73,10 +73,13 @@ class ObjectsController < ApplicationController
     render layout: false
   end
 
-  # Per-field extended view, lazy-loaded as a Turbo Frame from the fields
-  # table. Also directly addressable as /objects/:api_name/fields/:field_name
-  # for deep-linking. Same ObjectViewPolicy gate as #show so sensitivity
-  # redaction stays consistent.
+  # Per-field extended view. Two access modes:
+  #   - Turbo Frame request (inline expand from the fields table): renders
+  #     just the panel inside a turbo-frame tag, no chrome.
+  #   - Direct request (deep link / sequential walkthrough): renders the
+  #     panel inside the app layout with breadcrumb + prev/next navigation.
+  # Same ObjectViewPolicy gate as #show so sensitivity redaction stays
+  # consistent.
   def field
     @sobject = Sobject.where(extraction_run: @run).find_by!(api_name: params[:api_name])
     authorize @sobject, policy_class: ObjectViewPolicy
@@ -85,7 +88,8 @@ class ObjectsController < ApplicationController
     @field_profile = @object_profile ? FieldProfile.find_by(object_profile: @object_profile, sfield: @sfield) : nil
     @outgoing_relationships = Srelationship.where(extraction_run: @run, source_field: @sfield)
       .includes(:target_sobject).to_a
-    render layout: false
+    @prev_sfield, @next_sfield = field_neighbors(@sobject, @sfield)
+    render layout: false if turbo_frame_request?
   end
 
   private
@@ -110,5 +114,14 @@ class ObjectsController < ApplicationController
   def filter_namespace(scope, ns)
     return scope.where(namespace_prefix: nil).or(scope.where(namespace_prefix: "")) if ns == "standard"
     scope.where(namespace_prefix: ns)
+  end
+
+  # Returns [prev_api_name, next_api_name] for sequential walkthroughs.
+  # Ordering matches the fields panel's default sort (alphabetical by api_name).
+  def field_neighbors(sobject, sfield)
+    ordered = sobject.sfields.order(:api_name).pluck(:api_name)
+    idx = ordered.index(sfield.api_name)
+    return [ nil, nil ] if idx.nil?
+    [ idx.positive? ? ordered[idx - 1] : nil, ordered[idx + 1] ]
   end
 end
