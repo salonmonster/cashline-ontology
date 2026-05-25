@@ -79,23 +79,24 @@
   </div>
 
   <div class="overflow-hidden rounded border border-slate-200 bg-white">
-    <table class="min-w-full divide-y divide-slate-200 text-sm">
+    <table class="min-w-full divide-y divide-slate-200 text-sm" data-controller="sortable-table">
       <thead class="bg-slate-100 text-left text-xs uppercase tracking-wide text-slate-600">
         <tr>
-          <th class="px-3 py-2">API name</th>
-          <th class="px-3 py-2">Label</th>
-          <th class="px-3 py-2">Namespace</th>
-          <th class="px-3 py-2">Fields</th>
-          <th class="px-3 py-2">Custom</th>
+          <th class="px-3 py-2 cursor-pointer select-none hover:bg-slate-200" data-action="click->sortable-table#sort" data-sort-type="text">API name<span class="sort-indicator"></span></th>
+          <th class="px-3 py-2 cursor-pointer select-none hover:bg-slate-200" data-action="click->sortable-table#sort" data-sort-type="text">Label<span class="sort-indicator"></span></th>
+          <th class="px-3 py-2 cursor-pointer select-none hover:bg-slate-200" data-action="click->sortable-table#sort" data-sort-type="text">Namespace<span class="sort-indicator"></span></th>
+          <th class="px-3 py-2 cursor-pointer select-none hover:bg-slate-200" data-action="click->sortable-table#sort" data-sort-type="number">Fields<span class="sort-indicator"></span></th>
+          <th class="px-3 py-2 cursor-pointer select-none hover:bg-slate-200" data-action="click->sortable-table#sort" data-sort-type="text">Custom<span class="sort-indicator"></span></th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-100">
+      <tbody class="divide-y divide-slate-100" data-sortable-table-target="body">
         <% @sobjects.each do |so| %>
           <% frame_id = dom_id(so, :fields) %>
-          <tr data-controller="expandable"
+          <tr data-field-name="<%= so.api_name %>"
+              data-controller="expandable"
               data-expandable-frame-id-value="<%= frame_id %>"
               data-expandable-frame-url-value="<%= fields_object_path(so.api_name, run: @run.id) %>">
-            <td class="px-3 py-2">
+            <td class="px-3 py-2" data-sort-value="<%= so.api_name %>">
               <button type="button"
                       data-action="click->expandable#toggle"
                       class="mr-2 inline-block w-4 text-slate-500 hover:text-slate-900"
@@ -107,10 +108,10 @@
             </td>
             <td class="px-3 py-2 text-slate-700"><%= so.label %></td>
             <td class="px-3 py-2 text-slate-700"><%= so.namespace_prefix.presence || "standard" %></td>
-            <td class="px-3 py-2 text-slate-700"><%= @sfield_counts[so.id] || 0 %></td>
+            <td class="px-3 py-2 text-slate-700" data-sort-value="<%= @sfield_counts[so.id] || 0 %>"><%= @sfield_counts[so.id] || 0 %></td>
             <td class="px-3 py-2 text-slate-700"><%= so.custom ? "custom" : "standard" %></td>
           </tr>
-          <tr id="<%= frame_id %>-row" class="hidden">
+          <tr id="<%= frame_id %>-row" class="hidden" data-detail-for="<%= so.api_name %>">
             <td colspan="5" class="p-0 border-0">
               <%# Frame starts without src — expandable_controller sets src on first toggle %>
               <%= turbo_frame_tag frame_id do %>

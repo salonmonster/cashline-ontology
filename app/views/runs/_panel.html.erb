@@ -45,7 +45,7 @@
       <ul class="space-y-2 text-sm">
         <li><%= link_to "View extraction results (objects)", objects_path(run: run.id), class: "text-blue-700 underline" %></li>
         <% if respond_to?(:erds_path) %><li><%= link_to "Per-domain ERDs", erds_path(run: run.id), class: "text-blue-700 underline" %></li><% end %>
-        <% if respond_to?(:graph_path) %><li><%= link_to "Force-directed graph", graph_path(run: run.id), class: "text-blue-700 underline" %></li><% end %>
+        <% if respond_to?(:visualizations_path) %><li><%= link_to "Visualizations (graph, bubble chart, heatmap)", visualizations_path(run: run.id), class: "text-blue-700 underline" %></li><% end %>
         <% if respond_to?(:reports_hub_orphan_path) %><li><%= link_to "Hub / orphan report", reports_hub_orphan_path(run: run.id), class: "text-blue-700 underline" %></li><% end %>
       </ul>
     </div>
