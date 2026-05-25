@@ -6,7 +6,7 @@ See `docs/brainstorms/2026-05-23-sailfin-extraction-and-ontology-requirements.md
 
 ## Current status
 
-**Phases A–F complete** (all 21 implementation units from the plan):
+**Phases A–F complete** (all 21 implementation units from the plan) plus a polish pass that sharpens the manual-mapping workflow:
 
 | Phase | Coverage |
 |---|---|
@@ -14,12 +14,13 @@ See `docs/brainstorms/2026-05-23-sailfin-extraction-and-ontology-requirements.md
 | **B** Salesforce client | JWT Bearer auth via Restforce 8, token cache, API limits guard |
 | **C** Extraction | `ExtractionRun` model, REST `describe` walker, Tooling API, JSONL run storage, relational loader |
 | **D** Profiling | Sensitivity classifier (PII / financial), `ProfileObjectJob`, Bulk 2.0 sampling, redaction policy |
-| **E** UI views | Runs / objects / ERDs (Mermaid) / force-directed graph (Cytoscape) / hub-orphan + unused-fields reports |
+| **E** UI views | Runs / objects / ERDs (Mermaid) / force-directed graph (Cytoscape) / hub-orphan + unused-fields / mapping-order reports |
 | **F** Diff | `DiffCalculator` + `ComputeDiffJob`, categorized diff UI, Markdown export |
+| **Polish** | Sortable + type-filtered fields tables, click-to-expand field detail with prev/next walkthrough, filtered CSV exports pre-seeded with mapping columns, Sailfin scope preset, live profiling progress |
 
-Phase 3 (mapping workbench, FIBO suggestions, Turtle export) is deferred to a future plan.
+Phase 3 (mapping workbench, FIBO suggestions, Turtle export) is deferred — see [`docs/method/manual-mapping-stopgap.md`](docs/method/manual-mapping-stopgap.md) for the workflow that does the work in a spreadsheet + text editor until Phase 3 is scoped.
 
-178 tests, 457 assertions, 0 failures.
+221 tests, 650 assertions, 0 failures.
 
 ## Quickstart (development)
 
@@ -89,6 +90,10 @@ Schema dumps use SQL format (`db/structure.sql`, `db/audit_structure.sql`) so cu
 - `docs/runbook/salesforce-connected-app.md` — External Client App + JWT cert setup, credentials format, smoke test
 - `docs/runbook/audit-db.md` — Audit DB roles, provisioning, retention, tampering forensics
 - `docs/runbook/run-storage.md` — Run directory layout, sensitive-run handling, retention, rebuild commands
+
+## Method
+
+- `docs/method/manual-mapping-stopgap.md` — How to use Phases A–F + polish to author the first cashline ontology draft in a spreadsheet + text editor, ahead of the Phase 3 workbench
 
 ## Tests
 
