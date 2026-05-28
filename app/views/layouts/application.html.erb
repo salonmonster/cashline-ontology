@@ -33,15 +33,19 @@
   </head>
 
   <body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
-    <%= render "shared/nav" %>
-    <% if flash[:notice] || flash[:alert] %>
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 mt-4">
-        <% if flash[:notice] %><div class="flash-notice"><%= flash[:notice] %></div><% end %>
-        <% if flash[:alert] %><div class="flash-alert"><%= flash[:alert] %></div><% end %>
+    <div class="flex min-h-screen">
+      <%= render "shared/nav" %>
+      <div class="flex-1 min-w-0">
+        <% if flash[:notice] || flash[:alert] %>
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 mt-4">
+            <% if flash[:notice] %><div class="flash-notice"><%= flash[:notice] %></div><% end %>
+            <% if flash[:alert] %><div class="flash-alert"><%= flash[:alert] %></div><% end %>
+          </div>
+        <% end %>
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+          <%= yield %>
+        </main>
       </div>
-    <% end %>
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <%= yield %>
-    </main>
+    </div>
   </body>
 </html>
