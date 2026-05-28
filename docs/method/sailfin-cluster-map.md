@@ -39,6 +39,7 @@ See [Cluster 2](#cluster-2--receivables-invoices-line-items-disputes-credit) for
 | 6 | [SFSRM configuration tables](#cluster-6--sfsrm-configuration-tables) | Cut | 16 |
 | 7 | [Salesforce platform scaffolding](#cluster-7--salesforce-platform-scaffolding) | Cut | 19 |
 | 8 | [CRM / sales / service remnants](#cluster-8--crm--sales--service-remnants-the-unused-half-of-salesforce) | Cut | 38 |
+| — | [Cross-cutting: picklists (controlled vocabularies)](#cross-cutting-picklists-controlled-vocabularies) | Translation surface | 342 fields |
 
 ---
 
@@ -395,6 +396,34 @@ These are mostly objects with low or zero usage in the Sailfin run. They're in t
 
 ---
 
+## Cross-cutting: picklists (controlled vocabularies)
+
+Picklists are Salesforce's name for dropdown fields — the value must be one of a fixed list of admin-defined options. They cut across every cluster, so they don't belong to any one of them, but they're a real translation workload on the way to the new ontology.
+
+**The numbers:** 366 picklist/multipicklist fields across the 123 objects, holding ~8,000 distinct values. ~3,700 of those values are in 13 platform-supplied mega-picklists (`TimeZoneSidKey`, `LocaleSidKey`, `RelatedEntityType`, `SobjectType`, etc.) that carry over verbatim and don't need ontology decisions. **The substantive surface is ~342 fields and ~4,300 values.**
+
+Concentration is the story. The substantive picklist load lives almost entirely in **Cluster 2 (Receivables)** and **Cluster 3 (Collections operations)**:
+
+| Field | Values | Why it matters |
+|---|---:|---|
+| `sfsrm__Dispute__c.sfsrm__Sub_Type__c` | 70 | Drives the Dispute-vs-Task routing rule (see [comparison Gap 5](./cashline-platform-ontology-comparison.md)) |
+| `sfsrm__Payment_Line__c.sfsrm__Reason_Code__c` | 64 | Short-pay / write-off / dispute reasons |
+| `sfsrm__Treatment__c.sfsrm__Treatment_Group__c` | 37 | Dunning workflow groups |
+| `sfsrm__Transaction__c.sfsrm__Sub_Reason_Code__c` | 36 | Invoice exception sub-classification |
+
+These four fields alone hold ~200 values that feed lifecycle / classification decisions in the new ontology. The rest of the substantive picklists are smaller (mostly 2–20 values) and live on **Cluster 5 (Communication & activity)** for status/type fields and on standard objects (Lead.Industry, Contract.CurrencyIsoCode) where they're typically carry-over.
+
+**Picklists are *not* in:**
+- **Cluster 6 (SFSRM configuration tables)** — single-row admin records, the few picklists they have are settings, not domain vocabularies.
+- **Cluster 7 (Salesforce platform scaffolding)** — what's there is the TZ/Locale/SObjectType mega-picklists, all carry-over.
+- **Cluster 8 (CRM remnants)** — picklists exist but the objects themselves are being cut.
+
+**Implication for the new ontology.** Mapping ~4,300 source values into platform enums of order ~100 total values is mostly many-to-one collapses or explicit drops. The mapping table — not new schema — is the artifact you need. The Sailfin extraction tool already hashes each picklist's active value set per run and shows additions/removals on the diff page, so once a translation table exists, drift is detectable.
+
+For the full per-field inventory (sortable, exportable to CSV), use **`/reports/picklists`** in the app. For the raw counts and the namespace breakdown, see [`./sailfin-eda-2026-05-27.md`](./sailfin-eda-2026-05-27.md).
+
+---
+
 ## The keep / cut summary table
 
 | Cashline concept | Sailfin source | Action |
@@ -442,6 +471,7 @@ These are mostly objects with low or zero usage in the Sailfin run. They're in t
 9. **People** — Contacts and Individuals: separate entities in the new ontology, or folded into Customer?
 10. **Notes** — are dispute/treatment notes first-class Activity records or embedded text fields?
 11. **Credit scorecard** — is Cashline keeping the existing `sfsrm__Score_Card_Parameter__c` model or replacing it?
+12. **Picklist translation** — for the four high-signal `sfsrm__*` picklists (Dispute.Sub_Type, Payment_Line.Reason_Code, Treatment_Group, Transaction.Sub_Reason_Code), what's the target platform vocabulary? See [comparison Gap 11](./cashline-platform-ontology-comparison.md).
 
 ---
 
