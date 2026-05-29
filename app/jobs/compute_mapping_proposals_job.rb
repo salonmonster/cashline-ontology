@@ -22,9 +22,14 @@ class ComputeMappingProposalsJob < ApplicationJob
       run.record_partial_failure!(object_api_name: "proposals:#{sfield.api_name}", reason: e.message)
     end
 
-    # Additive embedding signal — only when OpenAI is configured; otherwise the
-    # heuristic proposals above stand on their own.
-    ComputeEmbeddingsJob.perform_later(run.id, snapshot.id) if Openai::ClientFactory.configured?
+    # Retrieve -> rerank chain. Embeddings (additive signal) run when OpenAI is
+    # configured and themselves chain the LLM adjudicator so it reranks the full
+    # candidate set; otherwise the adjudicator runs directly on the heuristic set.
+    if Openai::ClientFactory.configured?
+      ComputeEmbeddingsJob.perform_later(run.id, snapshot.id)
+    elsif Anthropic::ClientFactory.configured?
+      ComputeLlmAdjudicationJob.perform_later(run.id, snapshot.id)
+    end
   end
 
   private

@@ -19,6 +19,10 @@ class ComputeEmbeddingsJob < ApplicationJob
     return unless matcher.available? # no credentials → heuristic-only
 
     matcher.combine!(run)
+
+    # Hand off to the LLM rerank now that the candidate set carries embedding
+    # signals too, so the adjudicator reranks the full set.
+    ComputeLlmAdjudicationJob.perform_later(extraction_run_id, cashline_snapshot_id) if Anthropic::ClientFactory.configured?
   rescue Openai::Error, Faraday::Error => e
     # Graceful degradation: a transient OpenAI failure must not fail the grid.
     Rails.logger.warn("[ComputeEmbeddingsJob] degraded to heuristic-only: #{e.class}: #{e.message}")
