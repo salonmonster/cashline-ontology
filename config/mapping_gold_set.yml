@@ -1,0 +1,89 @@
+# Gold-standard entity-level mappings, hand-confirmed by a human analyst.
+#
+# Source of truth: docs/method/cashline-platform-ontology-comparison.md
+# (the side-by-side mapping table) and sailfin-cluster-map.md (keep/cut table).
+# These are SOURCE-OBJECT -> acceptable cashline TARGET-CLASS pairs. The doc
+# reasons at the entity level, so this gold set is entity-level; field-level
+# pairs are grown via human-in-the-loop accepts (see Mapping::Evaluator).
+#
+# `targets` lists every defensible target class for a source object. Some
+# objects legitimately map to more than one (e.g. Account fields split across
+# Customer::Organization and the per-link Customer::Account), so a prediction
+# counts as correct if it lands on ANY listed target.
+
+mapped:
+  - source_object: Brand__c
+    targets: [Client::Organization]
+    note: "Brand__c IS the Client (banking, target collectors, AR config)."
+  - source_object: Account
+    targets: [Customer::Organization, Customer::Account]
+    note: "Account is the Customer; fields split between canonical org and per-link account."
+  - source_object: Account_Brand_Association__c
+    targets: [Customer::Account]
+    note: "The Client<->Customer link record."
+  - source_object: Contact
+    targets: [Customer::Contact, Client::Contact]
+    note: "Person at a Customer (or Client)."
+  - source_object: sfsrm__Transaction__c
+    targets: [Invoice]
+    note: "The AR posting record; Invoice is its primary subtype (see Gap 12 re: ARPosting)."
+  - source_object: sfsrm__Line_Item__c
+    targets: [InvoiceLineItem]
+    note: "Invoice line items."
+  - source_object: sfsrm__Dispute__c
+    targets: [InvoiceDispute]
+    note: "Dispute lifecycle."
+  - source_object: ContentDocument
+    targets: [InvoiceAttachment]
+    note: "File attachments collapse to one Attachment entity."
+  - source_object: Task
+    targets: [OperationalTask, CommunicationEvent]
+    note: "Overloaded activity record split into task + communication."
+  - source_object: User
+    targets: [User]
+    note: "Identity."
+
+# Actively-used Sailfin objects with NO cashline home yet. The correct matcher
+# behaviour is low confidence / no confident target (gap-discovery signal), NOT
+# a confident wrong mapping. Reported separately as a false-confidence check.
+no_target:
+  - source_object: sfsrm__Payment__c
+    note: "Cash receipt - cash side not yet modelled (Gap 1)."
+  - source_object: sfsrm__Payment_Line__c
+    note: "Payment-to-invoice allocation - not yet modelled (Gap 1)."
+  - source_object: sfcapp__Payment_Batch__c
+    note: "Payment batch - not yet modelled (Gap 1)."
+  - source_object: sfsrm__Credit_Application__c
+    note: "Credit ontology not yet modelled (Gap 2)."
+
+# Field-level gold: unambiguous source-field -> target-field pairs (verified to
+# exist in run 11 + snapshot 1). `targets` is a list of acceptable "Class.field"
+# strings; a prediction is correct if it lands on any. Used by mapping:field_eval
+# to isolate the field-level precision of heuristic vs embedding vs LLM.
+fields:
+  - source: "sfsrm__Line_Item__c.sfsrm__Quantity__c"
+    targets: [ "InvoiceLineItem.quantity" ]
+  - source: "sfsrm__Line_Item__c.sfsrm__Unit_Price__c"
+    targets: [ "InvoiceLineItem.unit_price_cents" ]
+  - source: "sfsrm__Line_Item__c.sfsrm__Line_Total__c"
+    targets: [ "InvoiceLineItem.amount_cents" ]
+  - source: "sfsrm__Line_Item__c.sfsrm__Description__c"
+    targets: [ "InvoiceLineItem.description" ]
+  - source: "sfsrm__Transaction__c.Amount_Outstanding__c"
+    targets: [ "Invoice.balance_due_cents" ]
+  - source: "sfsrm__Transaction__c.CurrencyIsoCode"
+    targets: [ "Invoice.currency" ]
+  - source: "sfsrm__Transaction__c.Invoice_Number__c"
+    targets: [ "Invoice.invoice_number" ]
+  - source: "Brand__c.Name"
+    targets: [ "Client::Organization.name" ]
+  - source: "Contact.FirstName"
+    targets: [ "Customer::Contact.first_name", "Client::Contact.first_name" ]
+  - source: "Contact.LastName"
+    targets: [ "Customer::Contact.last_name", "Client::Contact.last_name" ]
+  - source: "Contact.Email"
+    targets: [ "Customer::Contact.email", "Client::Contact.email" ]
+  - source: "sfsrm__Dispute__c.sfsrm__Status__c"
+    targets: [ "InvoiceDispute.status" ]
+  - source: "Task.Subject"
+    targets: [ "OperationalTask.title" ]
