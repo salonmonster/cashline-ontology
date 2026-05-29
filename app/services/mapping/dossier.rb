@@ -42,7 +42,6 @@ module Mapping
         object: {
           api_name: sobject.api_name,
           label: sobject.label.presence,
-          cluster: cluster_name(sobject),
           record_count: record_count(sobject)
         }.compact,
         field: field.compact,
@@ -109,10 +108,6 @@ module Mapping
       values.compact.first(PICKLIST_CAP)
     end
 
-    def cluster_name(sobject)
-      Cluster.where(id: ClusterAssignment.where(sobject_id: sobject.id).select(:cluster_id)).pluck(:name).first
-    end
-
     def record_count(sobject)
       ObjectProfile.where(sobject_id: sobject.id).order(profiled_at: :desc).limit(1).pick(:record_count)
     end
@@ -148,7 +143,7 @@ module Mapping
       obj = d[:object]
       lines = []
       lines << "[sailfin] #{obj[:api_name]}.#{d[:field][:api_name]}"
-      meta = [ obj[:label] && %("#{obj[:label]}"), obj[:cluster] && "cluster=#{obj[:cluster]}", obj[:record_count] && "~#{obj[:record_count]} rows" ].compact.join(" · ")
+      meta = [ obj[:label] && %("#{obj[:label]}"), obj[:record_count] && "~#{obj[:record_count]} rows" ].compact.join(" · ")
       lines << "object: #{meta}" if meta.present?
       f = d[:field]
       ftype = [ f[:type], f[:required] ? "required" : nil ].compact.join(" · ")

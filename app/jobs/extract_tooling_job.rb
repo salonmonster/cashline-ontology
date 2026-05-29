@@ -29,6 +29,16 @@ class ExtractToolingJob < ApplicationJob
     # while the run is already marked complete.
     Runs::RelationalLoader.load!(run)
 
+    # Derive relationship clusters so object-role context (the cluster a field's
+    # object belongs to) is available to the mapping dossiers and the cluster
+    # map. Non-fatal: a clustering hiccup must not fail an otherwise-complete
+    # extraction, and it skips runs whose clusters a user has hand-edited.
+    begin
+      Ontology::ClusterPersister.compute_and_persist!(run)
+    rescue StandardError => e
+      Rails.logger.warn("[ExtractToolingJob] clustering skipped: #{e.class}: #{e.message}")
+    end
+
     run.sobjects.pluck(:id).each do |sobject_id|
       ProfileObjectJob.perform_later(sobject_id)
     end
