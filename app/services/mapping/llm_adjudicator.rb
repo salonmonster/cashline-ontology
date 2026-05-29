@@ -35,19 +35,18 @@ module Mapping
       source_fields(run).find_each.sum { |sf| adjudicate(sf) ? 1 : 0 }
     end
 
-    # Returns true if a decision was applied, false if there were no candidates.
+    # One Opus call per field: rerank its candidate set AND produce a functional-
+    # role note + keep/need/discard disposition (persisted as a FieldAssessment).
+    # Runs even with no candidates so every field gets a note + disposition.
     def adjudicate(sfield)
-      candidates = open_proposals(sfield)
-      return false if candidates.empty?
-
-      shuffled = candidates.shuffle
+      shuffled = open_proposals(sfield).shuffle
       ids = (0...shuffled.size).map(&:to_s)
       result = @client.tool_call(
         system: system_prompt,
         user: user_prompt(sfield, shuffled),
         tool: decision_tool(ids)
       )
-      apply_decision(shuffled, result)
+      apply_decision(sfield, shuffled, result)
       true
     end
 
@@ -61,7 +60,7 @@ module Mapping
         .to_a
     end
 
-    def apply_decision(shuffled, result)
+    def apply_decision(sfield, shuffled, result)
       chosen = result["target_id"].to_s
       confidence = result["confidence"].to_f
 
@@ -74,6 +73,22 @@ module Mapping
         end
         proposal.update!(signals: signals.compact, score: rescore(signals))
       end
+
+      persist_assessment(sfield, result)
+    end
+
+    # Store the field-level note + disposition (covers fields with no proposal too).
+    def persist_assessment(sfield, result)
+      note = result["role_note"].presence
+      disposition = result["disposition"].to_s.presence_in(FieldAssessment::DISPOSITIONS)
+      return if note.nil? && disposition.nil?
+
+      assessment = FieldAssessment.find_or_initialize_by(sfield_id: sfield.id, cashline_snapshot_id: @snapshot.id)
+      assessment.role_note = note if note
+      assessment.disposition = disposition if disposition
+      assessment.disposition_reason = result["disposition_reason"].presence
+      assessment.assessed_at = Time.current
+      assessment.save!
     end
 
     def rescore(signals)
@@ -87,16 +102,19 @@ module Mapping
     def decision_tool(ids)
       {
         name: "record_match",
-        description: "Record the single best-fit cashline target for the source field, or NO_MATCH if none genuinely fits.",
+        description: "Record the best-fit cashline target for the source field (or NO_MATCH), plus a role note and a keep/need/discard disposition.",
         input_schema: {
           type: "object",
           properties: {
             target_id: { type: "string", enum: ids + [ "NO_MATCH" ], description: "id of the chosen candidate, or NO_MATCH" },
             confidence: { type: "number", description: "0.0-1.0 confidence in the chosen match" },
-            rationale: { type: "string", description: "one sentence on the functional-role reasoning" },
-            evidence: { type: "array", items: { type: "string" }, description: "the specific field attributes that drove the decision" }
+            rationale: { type: "string", description: "one sentence on the functional-role reasoning for the match" },
+            evidence: { type: "array", items: { type: "string" }, description: "the specific field attributes that drove the decision" },
+            role_note: { type: "string", description: "one or two sentences describing the SOURCE field's functional role in Sailfin: what it stores and its part in the object's purpose" },
+            disposition: { type: "string", enum: FieldAssessment::DISPOSITIONS, description: "keep = a candidate genuinely fits; need_in_cashline = no candidate fits but the field IS used (per its data stats) so cashline should add it; discard = no fit and the field is unused/vestigial" },
+            disposition_reason: { type: "string", description: "one sentence justifying the disposition" }
           },
-          required: %w[target_id confidence rationale]
+          required: %w[target_id confidence rationale role_note disposition]
         }
       }
     end
@@ -113,6 +131,18 @@ module Mapping
         of its parent object. A close name with the wrong role is a worse match than
         a different name with the right role. If none of the candidates is a genuine
         fit, return NO_MATCH rather than forcing one.
+
+        Also produce:
+        - role_note: one or two plain sentences on what the source field stores and
+          its role in the object — the kind of note a data analyst would jot down.
+        - disposition: keep / need_in_cashline / discard.
+          * keep — a candidate genuinely fits (you chose one); it exists in both systems.
+          * need_in_cashline — no candidate fits, BUT the field is actually USED in
+            Sailfin (judge from its data stats: low null rate, real distinct values,
+            meaningful content). Cashline lacks this and should add it.
+          * discard — no candidate fits AND the field is unused or vestigial (mostly
+            null, single/zero distinct values, or pure Salesforce administrative
+            plumbing). Not worth carrying into cashline.
 
         Confirmed entity-level mappings, for orientation (source object -> cashline class):
         #{examples}
@@ -132,7 +162,7 @@ module Mapping
         #{@dossier.render(@dossier.source(sfield))}
 
         CANDIDATES (choose the best by id, or NO_MATCH):
-        #{blocks.join("\n\n")}
+        #{blocks.presence&.join("\n\n") || "(no candidate targets)"}
       USR
     end
 

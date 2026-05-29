@@ -249,6 +249,42 @@ ALTER SEQUENCE public.extraction_runs_id_seq OWNED BY public.extraction_runs.id;
 
 
 --
+-- Name: field_assessments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.field_assessments (
+    id bigint NOT NULL,
+    sfield_id bigint NOT NULL,
+    cashline_snapshot_id bigint NOT NULL,
+    role_note text,
+    disposition character varying,
+    disposition_reason text,
+    assessed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: field_assessments_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.field_assessments_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: field_assessments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.field_assessments_id_seq OWNED BY public.field_assessments.id;
+
+
+--
 -- Name: field_profiles; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -904,6 +940,13 @@ ALTER TABLE ONLY public.extraction_runs ALTER COLUMN id SET DEFAULT nextval('pub
 
 
 --
+-- Name: field_assessments id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.field_assessments ALTER COLUMN id SET DEFAULT nextval('public.field_assessments_id_seq'::regclass);
+
+
+--
 -- Name: field_profiles id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1048,6 +1091,14 @@ ALTER TABLE ONLY public.embedding_sources
 
 ALTER TABLE ONLY public.extraction_runs
     ADD CONSTRAINT extraction_runs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: field_assessments field_assessments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.field_assessments
+    ADD CONSTRAINT field_assessments_pkey PRIMARY KEY (id);
 
 
 --
@@ -1340,6 +1391,27 @@ CREATE INDEX index_extraction_runs_on_status ON public.extraction_runs USING btr
 --
 
 CREATE INDEX index_extraction_runs_on_user_id ON public.extraction_runs USING btree (user_id);
+
+
+--
+-- Name: index_field_assessments_on_cashline_snapshot_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_field_assessments_on_cashline_snapshot_id ON public.field_assessments USING btree (cashline_snapshot_id);
+
+
+--
+-- Name: index_field_assessments_on_field_and_snapshot; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_field_assessments_on_field_and_snapshot ON public.field_assessments USING btree (sfield_id, cashline_snapshot_id);
+
+
+--
+-- Name: index_field_assessments_on_sfield_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_field_assessments_on_sfield_id ON public.field_assessments USING btree (sfield_id);
 
 
 --
@@ -1861,6 +1933,14 @@ ALTER TABLE ONLY public.sobjects
 
 
 --
+-- Name: field_assessments fk_rails_3d81ac385a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.field_assessments
+    ADD CONSTRAINT fk_rails_3d81ac385a FOREIGN KEY (sfield_id) REFERENCES public.sfields(id);
+
+
+--
 -- Name: object_profiles fk_rails_40cefa1d40; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1997,6 +2077,14 @@ ALTER TABLE ONLY public.cluster_assignments
 
 
 --
+-- Name: field_assessments fk_rails_e530fb2e9b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.field_assessments
+    ADD CONSTRAINT fk_rails_e530fb2e9b FOREIGN KEY (cashline_snapshot_id) REFERENCES public.cashline_snapshots(id);
+
+
+--
 -- Name: spicklist_values fk_rails_e8555a132d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2019,6 +2107,7 @@ ALTER TABLE ONLY public.clusters
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260529120000'),
 ('20260528000007'),
 ('20260528000006'),
 ('20260528000005'),

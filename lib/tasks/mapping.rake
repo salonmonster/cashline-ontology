@@ -133,7 +133,10 @@ namespace :mapping do
       end
     end
 
-    # Stage 2 — rerank: LLM adjudicates each field's candidate set.
+    # Stage 1b — embedding signal (retrieval enrichment) before the LLM rerank.
+    Mapping::EmbeddingMatcher.new(snapshot: snapshot).combine!(run, fields: fields) if Openai::ClientFactory.configured?
+
+    # Stage 2 — rerank + assess: LLM picks the target and writes a role note + disposition.
     done = 0
     fields.each_with_index do |sf, i|
       adjudicator.adjudicate(sf) && (done += 1)
@@ -142,7 +145,10 @@ namespace :mapping do
       run.record_partial_failure!(object_api_name: "adjudicate:#{sf.api_name}", reason: e.message)
       print "x"
     end
+    puts "\nadjudicated #{done}/#{fields.size} fields."
 
-    puts "\nadjudicated #{done}/#{fields.size} fields. Re-run `bin/rails mapping:eval MODE=proposals` to measure lift."
+    # Stage 3 — disambiguation: one winner per contested cashline target.
+    contested = Mapping::LlmDisambiguator.new(snapshot: snapshot).resolve!(run)
+    puts "disambiguated #{contested} contested target(s). Re-run `bin/rails mapping:eval MODE=proposals` to measure lift."
   end
 end

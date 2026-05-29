@@ -20,6 +20,8 @@ class ComputeLlmAdjudicationJob < ApplicationJob
     return unless adjudicator.available? # no credentials → heuristic/embedding stands
 
     adjudicator.combine!(run)
+    # Resolve many-to-one collisions: one winner per contested cashline target.
+    Mapping::LlmDisambiguator.new(snapshot: snapshot).resolve!(run)
   rescue Anthropic::Error, Faraday::Error => e
     Rails.logger.warn("[ComputeLlmAdjudicationJob] degraded to non-LLM scoring: #{e.class}: #{e.message}")
   end

@@ -57,10 +57,26 @@ module Mapping
       assert_nil p.signals["llm_rationale"]
     end
 
-    test "adjudicate is a no-op when the field has no open proposals" do
-      client = FakeClient.new({ "target_id" => "0", "confidence" => 1.0, "rationale" => "x" })
-      assert_not LlmAdjudicator.new(snapshot: @snapshot, client: client).adjudicate(@sfield)
-      assert_empty client.calls
+    test "adjudicate still runs with no candidates and records a note + disposition" do
+      client = FakeClient.new({ "target_id" => "NO_MATCH", "confidence" => 0.0, "rationale" => "no fit",
+                                "role_note" => "Outstanding balance on the transaction.", "disposition" => "need_in_cashline" })
+      assert LlmAdjudicator.new(snapshot: @snapshot, client: client).adjudicate(@sfield)
+      assert_equal 1, client.calls.size
+
+      fa = FieldAssessment.find_by(sfield_id: @sfield.id, cashline_snapshot_id: @snapshot.id)
+      assert_equal "need_in_cashline", fa.disposition
+      assert_equal "Outstanding balance on the transaction.", fa.role_note
+    end
+
+    test "adjudicate records a keep disposition + role note alongside the match" do
+      proposal("balance_due_cents")
+      client = FakeClient.new({ "target_id" => "0", "confidence" => 0.95, "rationale" => "balance",
+                                "role_note" => "Remaining amount owed.", "disposition" => "keep" })
+      LlmAdjudicator.new(snapshot: @snapshot, client: client).adjudicate(@sfield)
+
+      fa = FieldAssessment.find_by(sfield_id: @sfield.id, cashline_snapshot_id: @snapshot.id)
+      assert_equal "keep", fa.disposition
+      assert_equal "Remaining amount owed.", fa.role_note
     end
 
     test "the candidate list and source dossier are included in the prompt" do
