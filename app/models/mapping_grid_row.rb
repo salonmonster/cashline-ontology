@@ -3,10 +3,28 @@
 #   - a synthetic, never-touched Sailfin field (entry nil)
 #   - a net_new cashline target with no Sailfin source (sfield nil)
 # Built by MappingsController#index; rendered by mappings/_row.
-MappingGridRow = Data.define(:sfield, :entry, :data_group, :field_profile) do
+MappingGridRow = Data.define(:sfield, :entry, :data_group, :field_profile, :field_assessment) do
   # net_new rows sort to a pinned "(no source)" group at the bottom — an
   # explicit high sentinel, not alphabetical on a blank Data Group.
   NET_NEW_SORT_GROUP = "￿(no source)".freeze
+
+  # field_assessment is optional so existing callers/tests need not supply it.
+  def initialize(sfield:, entry:, data_group:, field_profile:, field_assessment: nil)
+    super
+  end
+
+  # The LLM enrichment verdict (generated role note + keep/need/discard).
+  def role_note
+    field_assessment&.role_note
+  end
+
+  def disposition
+    field_assessment&.disposition
+  end
+
+  def disposition_label
+    field_assessment&.disposition_label
+  end
 
   def synthetic?
     entry.nil?

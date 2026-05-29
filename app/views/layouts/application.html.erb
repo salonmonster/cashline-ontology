@@ -42,7 +42,8 @@
             <% if flash[:alert] %><div class="flash-alert"><%= flash[:alert] %></div><% end %>
           </div>
         <% end %>
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <%# Views can opt into full right-panel width via content_for(:full_width). %>
+        <main class="<%= content_for?(:full_width) ? "px-4 sm:px-6 py-8" : "max-w-7xl mx-auto px-4 sm:px-6 py-8" %>">
           <%= yield %>
         </main>
       </div>

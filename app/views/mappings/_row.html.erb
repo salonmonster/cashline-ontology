@@ -56,12 +56,30 @@
     <% end %>
   </td>
 
+  <td class="px-3 py-2" data-sort-value="<%= row.disposition %>">
+    <% if row.disposition %>
+      <% disp_cls = { "keep" => "bg-emerald-100 text-emerald-800", "need_in_cashline" => "bg-amber-100 text-amber-800", "discard" => "bg-slate-200 text-slate-500" }[row.disposition] %>
+      <span class="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap <%= disp_cls %>"
+            title="<%= row.field_assessment&.disposition_reason %>"><%= row.disposition_label %></span>
+    <% else %>
+      <span class="text-slate-300">—</span>
+    <% end %>
+  </td>
+
   <% fp = row.field_profile %>
   <td class="px-3 py-2 text-slate-700" data-sort-value="<%= fp&.null_rate ? (1 - fp.null_rate).round(4) : nil %>">
     <% if fp&.null_rate %>
       <%= "#{((1 - fp.null_rate) * 100).round(1)}% pop" %>
       <span class="text-slate-400">· <%= fp.distinct_count || "—" %> distinct</span>
     <% else %>—<% end %>
+  </td>
+
+  <td class="px-3 py-2 text-xs text-slate-600 align-top" style="max-width: 22rem;">
+    <% if row.role_note.present? %>
+      <%= row.role_note %>
+    <% else %>
+      <span class="text-slate-300">—</span>
+    <% end %>
   </td>
 
   <td class="px-3 py-2" data-sort-value="<%= row.mapping_type %>">
@@ -132,10 +150,19 @@
     <%# Suggest-button slot (Unit 9). Suppressed on already-reviewed rows. %>
     <% proposals = row.sfield ? Array(local_assigns.fetch(:proposals_by_field, {})[row.sfield.id]) : [] %>
     <% rejected = row.sfield ? Array(local_assigns.fetch(:rejected_proposals_by_field, {})[row.sfield.id]) : [] %>
-    <% top = proposals.first unless row.reviewed? %>
+    <%# Disambiguation hides suggestions reassigned to another field. Once a field
+        is LLM-assessed, show only the chosen match — a NO_MATCH (disposition
+        need/discard) shows "no match", not a leftover 0% heuristic candidate. %>
+    <% unsuppressed = proposals.reject { |p| p.signals["disambig_suppressed"] } %>
+    <% assessed = row.field_assessment&.assessed_at.present? %>
+    <% top = (assessed ? unsuppressed.find { |p| p.signals["llm"].to_f > 0 } : unsuppressed.first) unless row.reviewed? %>
     <% if top %>
+      <% conf = top.signals["llm"].to_f %>
       <div class="flex flex-col gap-1">
-        <span class="font-mono text-[11px] text-slate-600" title="score <%= top.score %>"><%= top.target_label %></span>
+        <span class="font-mono text-[11px] text-slate-600" title="score <%= top.score %>">
+          <%= top.target_label %>
+          <% if conf > 0 %><span class="ml-1 font-sans font-semibold text-emerald-700"><%= (conf * 100).round %>%</span><% end %>
+        </span>
         <div class="flex gap-1">
           <%= button_to "Accept", accept_mapping_proposal_path(top), method: :post,
                 class: "rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] px-2 py-0.5",
@@ -151,6 +178,8 @@
         <%= button_to "restore", unreject_mapping_proposal_path(rejected.first), method: :post,
               class: "underline", form: { class: "inline", data: { turbo: false } } %>
       </div>
+    <% elsif assessed %>
+      <span class="text-[10px] text-slate-400" title="LLM found no cashline match — see Disposition">no match</span>
     <% else %>
       <span class="text-[10px] text-slate-300">—</span>
     <% end %>
@@ -158,7 +187,7 @@
 </tr>
 <% if value_mappable %>
   <tr id="<%= dom %>_values-row" class="hidden" data-detail-for="<%= dom %>">
-    <td colspan="10" class="p-0 border-0">
+    <td colspan="12" class="p-0 border-0">
       <%# expandable sets the frame src on first toggle (lazy-load). %>
       <%= turbo_frame_tag "#{dom}_values" do %>
         <div class="bg-slate-50 px-4 py-2 text-xs text-slate-500">Loading values…</div>

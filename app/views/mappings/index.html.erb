@@ -1,4 +1,5 @@
 <% content_for(:title, "Mapping Workbench") %>
+<% content_for(:full_width, true) %>
 
 <div class="flex items-center justify-between mb-6">
   <div>
@@ -55,7 +56,7 @@
   <% base = { snapshot: params[:snapshot], reviewed: params[:reviewed], mapped: params[:mapped],
               net_new: params[:net_new], needs_crosswalk: params[:needs_crosswalk],
               mapping_type: params[:mapping_type], gap: params[:gap], worklist: params[:worklist],
-              has_suggestion: params[:has_suggestion] }.compact_blank %>
+              has_suggestion: params[:has_suggestion], disposition: params[:disposition] }.compact_blank %>
   <% chip_on = "rounded bg-slate-900 text-white px-3 py-1 text-xs font-medium" %>
   <% chip_off = "rounded border border-slate-300 bg-white text-slate-700 hover:border-slate-500 px-3 py-1 text-xs" %>
   <% toggle = ->(key, val) { params[key].to_s == val.to_s ? base.except(key) : base.merge(key => val) } %>
@@ -80,6 +81,13 @@
       <%= link_to "Net-new", mappings_path(toggle.call(:net_new, "1")), class: (params[:net_new] == "1" ? chip_on : chip_off) %>
       <%= link_to "Needs crosswalk", mappings_path(toggle.call(:needs_crosswalk, "1")), class: (params[:needs_crosswalk] == "1" ? chip_on : chip_off) %>
       <%= link_to "Has suggestion", mappings_path(toggle.call(:has_suggestion, "1")), class: (params[:has_suggestion] == "1" ? chip_on : chip_off) %>
+    </div>
+
+    <div class="flex items-center gap-2 text-xs flex-wrap">
+      <span class="text-slate-500 font-medium">Disposition:</span>
+      <%= link_to "Keep", mappings_path(toggle.call(:disposition, "keep")), class: (params[:disposition] == "keep" ? chip_on : chip_off) %>
+      <%= link_to "Need in cashline", mappings_path(toggle.call(:disposition, "need_in_cashline")), class: (params[:disposition] == "need_in_cashline" ? chip_on : chip_off) %>
+      <%= link_to "Discard", mappings_path(toggle.call(:disposition, "discard")), class: (params[:disposition] == "discard" ? chip_on : chip_off) %>
     </div>
 
     <div class="flex items-center gap-2 text-xs flex-wrap">

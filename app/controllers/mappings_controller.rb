@@ -181,6 +181,7 @@ class MappingsController < ApplicationController
     rows = rows.select(&:net_new?) if params[:net_new] == "1"
     rows = rows.select(&:needs_crosswalk?) if params[:needs_crosswalk] == "1"
     rows = rows.select { |r| r.mapping_type == params[:mapping_type] } if params[:mapping_type].present?
+    rows = rows.select { |r| r.disposition == params[:disposition] } if FieldAssessment::DISPOSITIONS.include?(params[:disposition])
     rows = rows.select(&:gap?) if params[:gap] == "1"
     rows = rows.select { |r| !r.reviewed? && r.high_population? && !r.net_new? } if params[:worklist] == "1"
     rows = rows.select { |r| r.sfield && @suggested_field_ids.include?(r.sfield.id) } if params[:has_suggestion] == "1"
@@ -301,23 +302,25 @@ class MappingsController < ApplicationController
       sfields = source_fields_for(@run)
       profiles = field_profiles_for(@run, sfields)
       groups = data_groups_for(@run)
+      assessments = assessments_for(sfields)
 
       sfields.each do |sf|
         fp = profiles[sf.id]
         dg = groups[sf.sobject_id]
+        fa = assessments[sf.id]
         field_entries = entries_by_field[sf.id]
         if field_entries.blank?
-          rows << MappingGridRow.new(sfield: sf, entry: nil, data_group: dg, field_profile: fp)
+          rows << MappingGridRow.new(sfield: sf, entry: nil, data_group: dg, field_profile: fp, field_assessment: fa)
         else
           field_entries.each do |entry|
-            rows << MappingGridRow.new(sfield: sf, entry: entry, data_group: dg, field_profile: fp)
+            rows << MappingGridRow.new(sfield: sf, entry: entry, data_group: dg, field_profile: fp, field_assessment: fa)
           end
         end
       end
     end
 
     Array(entries_by_field[nil]).each do |entry|
-      rows << MappingGridRow.new(sfield: nil, entry: entry, data_group: nil, field_profile: nil)
+      rows << MappingGridRow.new(sfield: nil, entry: entry, data_group: nil, field_profile: nil, field_assessment: nil)
     end
 
     rows
@@ -329,8 +332,15 @@ class MappingsController < ApplicationController
     MappingGridRow.new(
       sfield: sfield, entry: entry,
       data_group: sfield && data_group_for(sfield),
-      field_profile: sfield && field_profile_for(sfield)
+      field_profile: sfield && field_profile_for(sfield),
+      field_assessment: sfield && @snapshot && FieldAssessment.find_by(sfield_id: sfield.id, cashline_snapshot_id: @snapshot.id)
     )
+  end
+
+  # sfield_id => FieldAssessment for the active snapshot (role note + disposition).
+  def assessments_for(sfields)
+    return {} if @snapshot.nil?
+    FieldAssessment.where(cashline_snapshot_id: @snapshot.id, sfield_id: sfields.map(&:id)).index_by(&:sfield_id)
   end
 
   def source_fields_for(run)
